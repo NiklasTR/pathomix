@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras.preprocessing.image as img
 import tensorflow.keras.applications as appl
-import tensorflow.keras.callbacks as callb 
+import tensorflow.keras.callbacks as callb
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Sequential, Model
 
@@ -17,6 +17,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
 
 batch_size = 32
+epoch_factor = 10
 # change in model_nas too
 image_size = (224, 224)
 
@@ -42,9 +43,13 @@ train_datagen = img.ImageDataGenerator(
 	vertical_flip=True,
         horizontal_flip=True,
 	validation_split=0.
+#	shuffle=True,
+#	seed=42
 	)
 
 test_datagen = img.ImageDataGenerator(rescale=1./255)
+				      #shuffle=True,
+				      #seed=42)
 
 train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN'
 train_samples = []
@@ -103,22 +108,22 @@ x = GlobalAveragePooling2D()(x)
 x = Dense(32, activation='relu')(x)
 x = Dropout(0.5)(x)
 
-predictions = Dense(1, activation='softmax')(x)
+predictions = Dense(1, activation='sigmoid')(x)
 
 for layer in model_nas.layers:
 	layer.trainable = False
 
 model = Model(inputs=model_nas.input, outputs=predictions)
-model.compile(optimizer='adam', loss='binary_crossentropy')
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 model.fit_generator(
         train_generator,
         #steps_per_epoch=20,
-	steps_per_epoch=num_train_samples//batch_size,
-        epochs=50,
+	steps_per_epoch=num_train_samples//(batch_size*epoch_factor),
+        epochs=(50*epoch_factor),
         validation_data=validation_generator,
-        #validation_steps=8, 
-	validation_steps=num_val_samples//(batch_size*10), # change for extensive validation
+        #validation_steps=8,
+	validation_steps=num_val_samples//(batch_size*5*epoch_factor), # change for extensive validation
 	workers=1,
 	use_multiprocessing=False,
 	callbacks=[tensor_board_callback])#, metrics])
