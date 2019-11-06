@@ -1,9 +1,11 @@
+import tensorflow.keras as keras
 import tensorflow as tf
 import tensorflow.keras.preprocessing.image as img
 import tensorflow.keras.applications as appl
 import tensorflow.keras.callbacks as callb
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, Flatten
 from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras import optimizers 
 
 import datetime
 import os
@@ -16,10 +18,24 @@ from sklearn.metrics import cohen_kappa_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
 
+from keras_mixnets import MixNetLarge
+
 batch_size = 32
 epoch_factor = 10
 # change in model_nas too
 image_size = (224, 224)
+
+
+class RestoreCkptCallback(keras.callbacks.Callback):
+    def __init__(self, pretrained_model_path):
+        self.pretrained_file = pretrained_model_path
+        self.sess = keras.backend.get_session()
+        self.saver = tf.train.Saver()
+    def on_train_begin(self, logs=None):
+        if self.pretrained_model_path:
+            self.saver.restore(self.sess, self.pretrained_model_path)
+            print('load weights: OK.')
+
 
 class ModelMetrics(callb.Callback):
   
@@ -85,7 +101,7 @@ metrics = ModelMetrics()
 
 
 '''
-model_nas = appl.NASNetLarge(input_shape=(331, 331, 3), 
+model_type = appl.NASNetLarge(input_shape=(331, 331, 3), 
 			include_top=False, 
 			#weights=None,
 			weights='imagenet',
@@ -95,7 +111,8 @@ model_nas = appl.NASNetLarge(input_shape=(331, 331, 3),
 			)
 '''
 
-model_nas = appl.densenet.DenseNet201(input_shape=(224, 224, 3), 
+'''
+model_type = appl.densenet.DenseNet201(input_shape=(224, 224, 3), 
 			include_top=False, 
 			#weights=None,
 			weights='imagenet',
@@ -103,32 +120,45 @@ model_nas = appl.densenet.DenseNet201(input_shape=(224, 224, 3),
 			pooling=None, # irrelevant since include_top=True
 			classes=2
 			)
-x = model_nas.output
+
+x = model_type.output
 x = GlobalAveragePooling2D()(x)
-x = Dense(32, activation='relu')(x)
-x = Dropout(0.5)(x)
+x = Dropout(0.1)(x)
+#x = Dense(32, activation='relu')(x)
+#x = Dropout(0.5)(x)
+'''
+model_type = MixNetLarge((224, 224, 3), include_top=True)
+
+model_type.layers.pop()
+model_type.layers.pop()
+
+print(model_type.summary())
+
+x = Flatten()(model_type.output)
 
 predictions = Dense(1, activation='sigmoid')(x)
 
-for layer in model_nas.layers:
-	layer.trainable = False
+for layer in model_type.layers:
+	layer.trainable = True 
 
-model = Model(inputs=model_nas.input, outputs=predictions)
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model = Model(inputs=model_type.input, outputs=predictions)
+#model.compile(optimizer='nadam', loss='binary_crossentropy', metrics=['accuracy'])
+sgd = optimizers.SGD(lr=.01)
+model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy'])
 
 model.fit_generator(
         train_generator,
-        #steps_per_epoch=20,
-	steps_per_epoch=num_train_samples//(batch_size*epoch_factor),
+        steps_per_epoch=20,
+	#steps_per_epoch=num_train_samples//(batch_size*epoch_factor),
         epochs=(50*epoch_factor),
         validation_data=validation_generator,
-        #validation_steps=8,
-	validation_steps=num_val_samples//(batch_size*5*epoch_factor), # change for extensive validation
+        validation_steps=8,
+	#validation_steps=num_val_samples//(batch_size*5*epoch_factor), # change for extensive validation
 	workers=1,
 	use_multiprocessing=False,
 	callbacks=[tensor_board_callback])#, metrics])
 
-model.save_weights('first_try.h5')
+model.save_weights('first_try2.h5')
 
 '''
 # accuracy: (tp + tn) / (p + n)
