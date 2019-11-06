@@ -1,0 +1,407 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(cowplot)
+library(lubridate)
+library(googlesheets)
+```
+
+I import the data
+
+```{r}
+load(here::here("data/clinicaltrials/AERO-BirdsEye-Data.rdata"))
+aero <- x %>% as_tibble() %>% janitor::clean_names()
+rm(x) 
+```
+
+I define a list of search terms to identify trials I am interested in. 
+
+```{r}
+aero %>% count(condition_final) %>% arrange(desc(n))
+
+index <- c("Carcinoma", "Neoplasm", "Melanoma", "Tumor")
+# I skip the following diseases: "Leukemia", "Lymphoma", "Myeloma",
+exclude <- c("Plasma Cell", "Hematologic", "Tumor Lysis Syndrome")
+```
+
+I look for trials matching these terms. 
+
+```{r}
+
+aero_cancer <- aero %>% 
+  filter(grepl(condition_final, pattern = paste(index,collapse="|"))) %>%
+  filter(!grepl(condition_final, pattern = paste(exclude,collapse="|"))) %>% 
+  # filtering vaccines
+  filter(!grepl(summary, pattern = "vaccine")) %>%
+  separate(nct, c('sponsor', "xml"), sep = "/")
+
+aero_cancer %>% 
+  write_csv(here::here("data/clinicaltrials/aero_cancer.csv"))
+  
+```
+
+```{r}
+# I manually went through the clinical trials from 2014 to 2019 and isolated recurring markers used for inclusion into clinical trials
+term = c("erbb2", "her2", "her-",
+  "dna Repair", "microsatellite instability", "mismatch",  "MSS", "tumor mutational burden",
+  "met ",  "met+ ", "c-MET","cMET",
+  "pi3k", "PIK3CA",
+  "alk", "ros1",  "egfr",  
+  #"cdk4", "cdk6",  # currently targeted but not tested
+  "brca", "kras", "FGFR", "p-CAD", "IDH1", 
+ # "TNBC", # triple negative
+  "NY-ESO-1", 
+  "LAGE-1a",
+  "DLL3",
+  "FGF",
+  "PD-1",  "PD-L1",
+  "NTRK1", "NTRK2", "NTRK3",
+  #"er",
+   # "ar", 
+  #"HR",
+  "BRAF V600"
+  
+
+  ) %>% 
+  paste0(" ", .)
+
+biomarker <- tibble(term = term,
+  target = c(rep("HER2", times = 3),
+             rep("DNA Repair", times = 5),
+             rep("cMET", times = 4),
+             rep("PI3KCA", times = 2),
+             toupper(term[15:length(term)])))
+
+```
+
+
+I then evaluate the trials and assign them to one or the other label.
+
+```{r}
+biomarker_trials <- biomarker %>%
+  mutate(trials = purrr::map(term, ~ aero_cancer %>% 
+                               filter(grepl(title, pattern = .x, ignore.case = TRUE) | 
+                                      grepl(summary, pattern = .x, ignore.case = TRUE)))) %>% 
+  mutate(n = purrr::map(trials, ~ .x %>% nrow())) %>% 
+  unnest(n)
+```
+
+Foundation Medicine, the de-factor standard in cancer genomic testing, is covering all of the genotypes we detected in our shortlist.
+
+```{r}
+biomarker_trials_clean <- biomarker_trials %>% 
+  unnest(trials) %>% 
+  dplyr::select(-term) %>% 
+  mutate(date = ymd(paste0(start_year, "-", start_month, "- 01"))) %>%
+  distinct()
+```
+
+I need to simplify the tumor classes 
+
+```{r}
+freq_cancer <- biomarker_trials_clean %>%  count(condition_final) %>% arrange(desc(n)) %>% 
+  filter(n > 1) %>% .$condition_final
+
+biomarker_trials_simple <- biomarker_trials_clean %>% 
+  mutate(condition_simple = case_when(condition_final == "Breast Neoplasms" | 
+                                      condition_final == "Triple Negative Breast Neoplasms" ~ "Breast",
+                                      
+                                      condition_final == "Carcinoma, Hepatocellular" ~ "HCC",
+                                      
+                                      condition_final == "Lung Neoplasms" |
+                                      condition_final == "Carcinoma, Non-Small-Cell Lung" ~ "NSCLC",
+                                      
+                                      condition_final == "Carcinoma, Transitional Cell" |
+                                      condition_final == "Urinary Bladder Neoplasms" ~ "Bladder",
+                                      
+                                      condition_final == "Prostatic Neoplasms, Castration-Resistant"|
+                                      condition_final == "Prostatic Neoplasms" ~ "Prostate",
+                                      
+                                      condition_final %in% c("Neoplasm Metastasis", "Neoplasms", "Carcinoma") ~ "Other"),
+         condition_simple = if_else(is.na(condition_simple), condition_final, condition_simple)) %>%
+  mutate(condition_simple = if_else(condition_final %in% freq_cancer, condition_simple, "Other"))  %>%
+  # I define a group of cases in which standard testing is being done
+  # mutate(target_type = case_when((target == "HER2" & (condition_simple %in% c("Breast", "Stomach Neoplasms", "Gastrointestinal Neoplasms", "Colorectal Neoplasms"))) |
+  #                                (target %in% c("DNA Repair", "KRAS") & condition_simple %in% c("Gastrointestinal Neoplasms", "Colorectal Neoplasms")) ~ "Routine testing",
+  #                                target %in% c(" PD-1", " PD-L1") ~ "Immuno-Oncology",
+  #                                TRUE ~ "Dedicated testing")) %>% 
+  mutate(target_type = case_when(target %in% c(" PD-1", " PD-L1") ~ "Immuno-Oncology",
+                                 TRUE ~ "Molecular target"))
+  
+```
+
+
+```{r}
+biomarker_trials_simple %>% 
+  filter(start_year != 2019) %>%
+  distinct(xml, .keep_all=TRUE) %>%
+  group_by(start_year) %>% 
+  summarise(enrollment = sum(enrollment)) %>% 
+  ggplot(aes(start_year, enrollment)) + 
+  geom_point() + 
+  geom_smooth(se = FALSE, color = "black", linetype = "dashed") + 
+  theme_cowplot()
+  
+```
+
+
+```{r}
+biomarker_trials_simple %>% 
+  filter(start_year != 2019) %>%
+  filter(start_year != 2001) %>%
+  distinct(xml, .keep_all=TRUE) %>%
+  group_by(start_year, target_type) %>% 
+  summarise(enrollment = sum(enrollment)) %>% 
+  #filter()
+  ggplot(aes(start_year, enrollment, group = target_type, color = target_type)) + 
+  geom_point() + 
+  geom_smooth(se = FALSE, linetype = "dashed", span = 0.5) + 
+  theme_cowplot()
+```
+
+```{r}
+biomarker_trials_simple %>% 
+  filter(start_year != 2019) %>%
+  filter(start_year != 2001) %>%
+  distinct(xml, .keep_all=TRUE) %>%
+  group_by(start_year, target_type) %>% 
+  summarise(number_trials = n()) %>% 
+  #filter()
+  ggplot(aes(start_year, number_trials, group = target_type, color = target_type)) + 
+  geom_point() + 
+  geom_smooth(se = FALSE, linetype = "dashed", span = 0.5) + 
+  theme_cowplot()
+```
+
+What is the abundance of commonly targeted molecular targets? 
+Of these biomarkers, I check the incidence for 5 frequently tested genes and the for 5 frequently tested phenotypes/signatures
+
+```{r}
+c("PI3KCA", "KRAS", "BRAF V600", "EGFR", "IDH1") # skipping FGFR mutations as they are commonly aggregated
+
+biomarker_trials_simple %>% count(target) %>% 
+  arrange(desc(n))
+```
+
+I am interested in the average trial size for each entity and biomarker. 
+
+```{r}
+n_biomarker <- biomarker_trials_simple %>%
+  filter(status == "Completed") %>%
+  mutate(phase = as.character(phase)) %>%
+  mutate(phase_simple = case_when(phase == "Phase 1/Phase 2" ~ "Phase 1",
+                                  phase == "Phase 2/Phase 3" ~ "Phase 2",
+                                  TRUE ~ phase)) %>% 
+  filter(phase_simple != "Phase 4") %>%
+  mutate(condition_simple = factor(condition_simple)) %>%
+  filter(start_year != 2019) %>%
+  filter(start_year != 2001) %>%
+  distinct(xml, .keep_all=TRUE) 
+
+  n_biomarker%>% 
+  ggplot(aes(enrollment, target, color = condition_simple)) + 
+  geom_jitter(height = 0.1) + 
+  scale_x_log10() + 
+  facet_wrap(~ phase_simple) + 
+  theme_minimal()
+```
+
+
+```{r}
+
+n_biomarker %>% 
+  group_by(target, phase_simple) %>% 
+  summarise(mean = mean(enrollment) %>% round(0),
+            min = min(enrollment),
+            max = max(enrollment),
+            n = n())
+```
+
+```{r}
+n_biomarker %>% group_by(phase_simple) %>% 
+  summarise(mean = mean(enrollment) %>% round(0),
+            median = median(enrollment) %>% round(0),
+            #min = min(enrollment),
+            max = max(enrollment),
+            sd = sd(enrollment)%>% round(0),
+            n = n())
+```
+
+Who are the largest pharma sponsors of these trials? 
+
+```{r}
+biomarker_trials_simple %>% 
+  distinct(xml, .keep_all = TRUE) %>% 
+  count(sponsor) %>% 
+  arrange(desc(n)) %>% 
+  mutate(rate = round(n/sum(n)*100),
+         sum = sum(n))
+```
+
+Current products q
+
+# Case study MSI & HER2
+
+```{r}
+gs <- gs_title("stat_lake")
+
+mortality <- gs_read(gs, ws = "mortality_2019") %>% janitor::clean_names() %>% filter(!is.na(entity))
+her2 <- gs_read(gs, ws = "her2_rate_solid") %>% janitor::clean_names() %>% 
+  separate(daemen, "her2", sep = "%") %>% 
+  mutate(her2 = as.numeric(her2))
+msi <- gs_read(gs, ws = "msi_rate_solid") %>% janitor::clean_names() %>% mutate(msi = average) %>% filter(!is.na(deviation))
+```
+
+I need to split the mortality for COAD/READ 
+
+```{r}
+# I manually split COAD READ and LUAD LUSC. COAD and READ have the same prognosis. I treat them similarly. 
+coad_read <- mortality %>% filter(entity == "COAD/READ") %>% .$total
+luad_lusc <- mortality %>% filter(entity == "LUAD/LUSC") %>% .$total
+
+
+late_stage_prevalence <- mortality %>% 
+  dplyr::select(total, entity) %>%
+  filter(!(entity %in% c("COAD/READ", "LUAD/LUSC"))) %>% 
+  rbind(tibble(total = c(0.7*coad_read, 0.3*coad_read, 0.55*luad_lusc, 0.35*luad_lusc),
+       entity = c("COAD", "READ", "LUAD", "LUSC")) %>% 
+       mutate(total = round(total))) %>%
+  # for now I collapse UCEC/UCS into UCEC
+  mutate(entity = if_else(entity == "UCEC/UCS", "UCEC", entity)) %>%
+  left_join(her2) %>% 
+  left_join(msi %>% dplyr::select(msi, entity))
+  
+```
+
+```{r}
+trial_count <- biomarker_trials_simple %>%
+  filter(target == "HER2") %>% 
+  distinct(xml, .keep_all = TRUE)  %>% 
+  count(condition_simple) %>% 
+  mutate(entity = case_when(condition_simple == "Breast" ~ "BRCA",
+                            condition_simple == "Stomach Neoplasms" ~ "STAD",
+                            condition_simple == "Bladder" ~ "BLCA",
+                            condition_simple == "Head and Neck Neoplasms" ~ "HNSC")) %>%
+  dplyr::select(n, entity)
+
+trial_size <- n_biomarker %>% 
+  filter(target == "HER2") %>%
+  group_by(phase_simple) %>% 
+  summarise(mean = mean(enrollment) %>% round(0),
+            min = min(enrollment),
+            max = max(enrollment),
+            n = n())
+
+her2_df <- late_stage_prevalence %>% 
+  left_join(trial_count) %>%
+  mutate(patients = total * (her2/100)) %>%
+  arrange(desc(patients)) %>% 
+  mutate(entity = factor(entity) %>% fct_inorder()) %>%
+  mutate(n = if_else(is.na(n), "0", as.character(n))) %>%
+  mutate(n = as.numeric(n)) %>%
+  filter(!is.na(her2)) 
+
+her2_df %>%
+  ggplot(aes(patients, her2, label = entity, size = n)) + 
+  geom_vline(xintercept = trial_size$mean[c(2,3)], linetype = "dashed") + 
+  geom_point() + 
+  ggrepel::geom_text_repel(size = 4, point.padding = 0.6) + 
+  theme_cowplot() + 
+  scale_size(range = c(1, 10)) +
+  scale_x_log10() + 
+  
+  labs(x = "Annual deaths of HER2+ positive patients by cancer type in the US",
+       y = "% HER2 amplified",
+       size = "Number of clinical trials (2001-2019)",
+       caption = "clinicaltrials.gov, NCI",
+       title = "Unlocking ultra-rare but attractive patient populations",
+       subtitle = "Dashed lines represent average HER2 trial size for Phase 2, 3") + 
+  background_grid() +
+  theme(legend.position = "bottom")
+```
+
+The Triumph study and the Heracles study tested COAD for Anti-Her2 therapy, exploiting the co-occurance of KRAS with HER2 amplification (from 2% to 6%).
+
+A recent review comes to the following conclusion regarding bladder cancer: "Trials of HER2– targeting agents generally in unselected bladder cancer patients have not shown definitive clinical efficacy. Better patient selection, such as via utilization of next-generation sequencing assays that detect specific genomic alterations, and novel therapy combinations that include HER2– targeting agents (with immunotherapy or other modalities) may lead to improved outcomes in current, ongoing or future trials." https://content.iospress.com/articles/bladder-cancer/blc180196 
+
+If Roche was to dominate the HER2 market in bladder cancer: 
+
+```{r}
+incidence <- gs_read(gs, ws = "incidence_2019") %>% janitor::clean_names() %>% filter(!is.na(entity))
+
+incidence_BRCA <- incidence %>% 
+  filter(entity == "BRCA") %>% 
+  .$total
+
+incidence_BLCA <- incidence %>% 
+  filter(entity == "BLCA") %>% 
+  .$total
+
+BRCA_market <- 20.1 #https://dashboards.trefis.com/no-login-required/5AOBfrzD/How-Does-Roche-s-Herceptin-Compare-To-Other-Breast-Cancer-Drugs-?from=forbes
+BLCA_market <- (BRCA_market/incidence_BRCA)*incidence_BLCA
+BLCA_market
+```
+
+We now run our model and see where we have the optimal performance. 
+# Case studies
+# HER2 case study
+
+```{r}
+mc_auc <- readRDS(here::here("simulations/monte_carlo_auc.Rds"))
+# I define parameters as good as I know 
+her2_mc <- expand_grid(her2_df, trial_size %>% dplyr::select(-n)) %>% 
+  filter(phase_simple != "Phase 1") %>%
+  rename(n_target = mean) %>%
+  mutate(p = her2/100,
+         cost_0 = 250, 
+         cost_1 = 5) %>%
+  dplyr::select(entity, p, phase_simple, n_target, cost_0, cost_1)
+
+# n_target = 300, 
+# p = 0.03, 
+# cost_0 = 250, 
+# cost_1 = 5, 
+# sens = 0.5, 
+# spec = 0.5
+
+her2_grid <- expand_grid(mc_auc %>% dplyr::select(-seed, -table), 
+                   her2_mc) %>% 
+  nest(data = c(sens, spec, p, n_target, cost_0, cost_1))
+
+her2_score <- her2_grid %>% 
+  filter(cohort == 100) %>%
+  filter(entity %in% c("BLCA", "COAD")) %>%
+  mutate(estimate = purrr::map(data, ~ .x %>% calculate_saving)) %>%
+  unnest(estimate, data)
+
+her2_score %>% saveRDS(here::here("simulations/her_costsaving.Rds"))
+```
+
+I plot the estimated cost saving for each 
+
+```{r}
+her2_score %>% 
+  #filter(entity == "BLCA") %>%
+  filter(cohort > 50) %>%
+  mutate(dC = dC/1000000) %>%
+  mutate(phase_simple = paste0(phase_simple, " (n=", n_target, ")")) %>%
+  ggplot(aes(auroc, dC)) + 
+  geom_hline(yintercept = 0) +
+  #geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_vline(xintercept = 0.5) +
+  geom_point() + 
+  facet_grid(entity ~ phase_simple) + 
+  theme_cowplot() + 
+  background_grid() +
+  geom_smooth(color = "grey") + 
+  labs(x = "AUROC of model",
+       y = "saved costs [Million USD]",
+       title = "Cost saving based on model classifier",
+       subtitle = paste0("HER2+, standard test=", her2_score$cost_0 %>% unique(), "USD, PathomiX=", her2_score$cost_1 %>% unique(), "USD, number of screened patient varies"),
+       caption = "Monte Carlo Simulation of AUROC on n=100 test cases")
+```
+

@@ -1,0 +1,75 @@
+---
+title: "Economics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(tidyverse)
+library(cowplot)
+```
+
+# Simulating binary classification results across different test set sizes.
+
+```{r, eval = FALSE}
+# creating a table
+set.seed(2529)
+n_samples <- 1000
+mc_auc <- expand_grid(seed = abs(rlnorm(n_samples,0)-1),
+                 cohort = c(20, 30, 40, 50, 60, 70, 80, 90, 100, 130, 160,  200, 300, 400, 500)) %>% 
+  mutate(table = purrr::map2(seed, cohort, ~ metric_simulator(.x, .y)))
+
+mc_auc <- mc_auc %>% 
+  mutate(auroc = purrr::map(table, ~ .x %>% yardstick::roc_auc(truth, prediction) %>% .$.estimate),
+         sens = purrr::map(table, ~ .x %>% mutate(prediction = prediction %>% round() %>% factor()) %>% yardstick::sens(truth, prediction) %>% .$.estimate),
+         spec = purrr::map(table, ~ .x %>% mutate(prediction = prediction %>% round() %>% factor()) %>% yardstick::spec(truth, prediction) %>% .$.estimate)
+         ) %>% 
+  unnest(c(auroc, sens, spec))
+
+mc_auc %>% saveRDS(here::here("simulations/monte_carlo_auc.Rds"))
+```
+
+I display the relationships between metrics
+
+```{r}
+mc_auc <- readRDS(here::here("simulations/monte_carlo_auc.Rds"))
+
+mc_auc %>% 
+  ggplot(aes(sens, spec)) + 
+  geom_point() + 
+  theme_cowplot() + 
+  facet_wrap(~ cohort, ncol = 5)
+
+mc_auc %>% 
+  ggplot(aes(auroc, sens)) + 
+  geom_point() + 
+  theme_cowplot() + 
+  facet_wrap(~ cohort, ncol = 5)
+```
+
+# Simulating the effect of sensitivity and specificity on cost saving. 
+
+```{r}
+metric_scored <- simulate_saving()
+
+metric_scored %>%
+  ggplot(aes(1-spec, sens, fill = dC)) + 
+  geom_tile() + 
+  scale_fill_viridis_c() + 
+  theme_cowplot()
+
+metric_scored %>%
+  ggplot(aes(1-spec, sens, fill = log10(r_1))) + 
+  geom_tile() + 
+  scale_fill_viridis_c() + 
+  theme_cowplot()
+
+```
+
+
+

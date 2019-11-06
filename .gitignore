@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+data/cosmic/CosmicGenomeScreensMutantExport.tsv
+data/cosmic/CosmicGenomeScreensMutantExport.tsv.gz
+data/cosmic/.DS_Store
