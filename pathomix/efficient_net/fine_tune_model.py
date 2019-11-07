@@ -1,5 +1,11 @@
 from keras import optimizers
 import os
+from sklearn.metrics import roc_auc_score
+import tensorflow as tf
+
+
+def auroc(y_true, y_pred):
+    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
 
 
 def fine_tune_model(model,
@@ -21,7 +27,7 @@ def fine_tune_model(model,
         l.trainable = True
 
     sgd = optimizers.SGD(lr=lr, momentum=momentum, nesterov=nesterov, decay=decay)
-    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy', 'auroc'])
 
     model.fit_generator(
         train_generator,
