@@ -5,3 +5,18 @@
 data/cosmic/CosmicGenomeScreensMutantExport.tsv
 data/cosmic/CosmicGenomeScreensMutantExport.tsv.gz
 data/cosmic/.DS_Store
+data/icgc/icgc-dataset-1573131324362/donor_exposure.tsv.gz
+data/icgc/icgc-dataset-1573131324362/donor_family.tsv
+data/icgc/icgc-dataset-1573131324362/donor_family.tsv.gz
+data/icgc/icgc-dataset-1573131324362/donor_surgery.tsv.gz
+data/icgc/icgc-dataset-1573131324362/donor_therapy.tsv
+data/icgc/icgc-dataset-1573131324362/donor_therapy.tsv.gz
+data/icgc/icgc-dataset-1573131324362/sample.tsv
+data/icgc/icgc-dataset-1573131324362/sample.tsv.gz
+data/icgc/icgc-dataset-1573131324362/simple_somatic_mutation.open.tsv.gz
+data/icgc/icgc-dataset-1573131324362/specimen.tsv
+data/icgc/icgc-dataset-1573131324362/specimen.tsv.gz
+data/icgc/donor-ids-for-set-BRCA2, Frameshift _ Missense _ Stop Gained _ Exon.tsv
+data/icgc/icgc-dataset-1573131324362.tar
+data/icgc/icgc-dataset-1573131324362/.DS_Store
+data/icgc/icgc-dataset-1573131324362/donor.tsv.gz

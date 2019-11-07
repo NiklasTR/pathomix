@@ -321,7 +321,8 @@ her2_df %>%
        title = "Unlocking ultra-rare but attractive patient populations",
        subtitle = "Dashed lines represent average HER2 trial size for Phase 2, 3") + 
   background_grid() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") + 
+  ggsave("her2_market.png", height = 8, width = 8)
 ```
 
 The Triumph study and the Heracles study tested COAD for Anti-Her2 therapy, exploiting the co-occurance of KRAS with HER2 amplification (from 2% to 6%).
@@ -389,7 +390,8 @@ her2_score %>%
   filter(cohort > 50) %>%
   mutate(dC = dC/1000000) %>%
   mutate(phase_simple = paste0(phase_simple, " (n=", n_target, ")")) %>%
-  ggplot(aes(auroc, dC)) + 
+  mutate(extra_pat = ((n_screen_1 - n_screen_0)/n_screen_0)*100) %>%
+  ggplot(aes(auroc, dC, color = extra_pat)) + 
   geom_hline(yintercept = 0) +
   #geom_hline(yintercept = 1, linetype = "dashed") +
   geom_vline(xintercept = 0.5) +
@@ -397,11 +399,188 @@ her2_score %>%
   facet_grid(entity ~ phase_simple) + 
   theme_cowplot() + 
   background_grid() +
-  geom_smooth(color = "grey") + 
+  geom_smooth(color = "grey", linetype = "dashed") + 
+  scale_color_viridis_c() +
   labs(x = "AUROC of model",
        y = "saved costs [Million USD]",
        title = "Cost saving based on model classifier",
        subtitle = paste0("HER2+, standard test=", her2_score$cost_0 %>% unique(), "USD, PathomiX=", her2_score$cost_1 %>% unique(), "USD, number of screened patient varies"),
-       caption = "Monte Carlo Simulation of AUROC on n=100 test cases")
+       caption = "Monte Carlo Simulation of AUROC on n=100 test cases",
+       color = "Percent extra patients needed relative to standard approach") + 
+  theme(legend.position = "bottom") +
+  ggsave("her2_cost_saving.png", height = 8, width = 8)
+```
+
+
+# MSI case study 
+
+```{r}
+trial_count <- biomarker_trials_simple %>%
+  filter(target == "MSI") %>% 
+  distinct(xml, .keep_all = TRUE)  %>% 
+  count(condition_simple) %>% 
+  mutate(entity = case_when(condition_simple == "Breast" ~ "BRCA",
+                            condition_simple == "Stomach Neoplasms" ~ "STAD",
+                            condition_simple == "Bladder" ~ "BLCA",
+                            condition_simple == "Head and Neck Neoplasms" ~ "HNSC")) %>%
+  dplyr::select(n, entity)
+
+trial_size <- n_biomarker %>% 
+  group_by(phase_simple) %>% 
+  summarise(mean = mean(enrollment) %>% round(0),
+            min = min(enrollment),
+            max = max(enrollment),
+            n = n())
+
+msi_df <- late_stage_prevalence %>% 
+  left_join(trial_count) %>%
+  mutate(patients = total * (msi/100)) %>%
+  arrange(desc(patients)) %>% 
+  mutate(entity = factor(entity) %>% fct_inorder()) %>%
+  mutate(n = if_else(is.na(n), "0", as.character(n))) %>%
+  mutate(n = as.numeric(n)) %>%
+  filter(!is.na(msi)) 
+
+msi_df %>%
+  ggplot(aes(patients, msi, label = entity)) + 
+  geom_vline(xintercept = trial_size$mean[c(2,3)], linetype = "dashed") + 
+  geom_point(size = 2) + 
+  ggrepel::geom_text_repel(size = 4, point.padding = 0.6) + 
+  theme_cowplot() + 
+  scale_size(range = c(1, 10)) +
+  scale_x_log10() + 
+  
+  labs(x = "Annual deaths of MSI+ positive patients by cancer type in the US",
+       y = "% MSI+",
+       size = "Number of clinical trials (2001-2019)",
+       caption = "clinicaltrials.gov, NCI",
+       title = "Unlocking ultra-rare but attractive patient populations",
+       subtitle = "Dashed lines represent average biomarker based trial size for Phase 2, 3") + 
+  background_grid() +
+  theme(legend.position = "bottom") + 
+  ggsave("msi_market.png", height = 8, width = 8)
+```
+
+Now I calculate the percent cost saving. 
+
+```{r}
+msi_mc <- expand_grid(msi_df, trial_size %>% dplyr::select(-n)) %>% 
+  filter(phase_simple != "Phase 1") %>%
+  rename(n_target = mean) %>%
+  mutate(p = msi/100,
+         cost_0 = 250, 
+         cost_1 = 5) %>%
+  dplyr::select(entity, p, phase_simple, n_target, cost_0, cost_1)
+
+# n_target = 300, 
+# p = 0.03, 
+# cost_0 = 250, 
+# cost_1 = 5, 
+# sens = 0.5, 
+# spec = 0.5
+
+msi_grid <- expand_grid(mc_auc %>% dplyr::select(-seed, -table), 
+                   msi_mc) %>% 
+  nest(data = c(sens, spec, p, n_target, cost_0, cost_1))
+
+msi_score <- msi_grid %>% 
+  filter(cohort == 100) %>%
+  filter(entity %in% c("UCEC", "COAD", "STAD", "READ", "BRCA")) %>%
+  mutate(estimate = purrr::map(data, ~ .x %>% calculate_saving)) %>%
+  unnest(estimate, data)
+
+msi_score %>% saveRDS(here::here("simulations/msi_costsaving.Rds"))
+```
+
+I plot the results 
+
+```{r}
+msi_score %>% 
+  #filter(entity == "BLCA") %>%
+  filter(cohort > 50) %>%
+  mutate(dC = dC/1000000) %>%
+  mutate(phase_simple = paste0(phase_simple, " (n=", n_target, ")")) %>%
+  mutate(extra_pat = ((n_screen_1 - n_screen_0)/n_screen_0)*100) %>%
+  ggplot(aes(auroc, dC, color = extra_pat)) + 
+  geom_hline(yintercept = 0) +
+  #geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_vline(xintercept = 0.5) +
+  geom_point() + 
+  facet_grid(entity ~ phase_simple) + 
+  theme_cowplot() + 
+  background_grid() +
+  geom_smooth(color = "grey", linetype = "dashed") + 
+  scale_color_viridis_c() +
+  scale_y_sqrt() + # killing negative scores
+  labs(x = "AUROC of model",
+       y = "saved costs [Million USD]",
+       title = "Cost saving based on model classifier",
+       subtitle = paste0("MSI+, standard test=", her2_score$cost_0 %>% unique(), "USD, PathomiX=", her2_score$cost_1 %>% unique(), "USD, number of screened patient varies"),
+       caption = "Monte Carlo Simulation of AUROC on n=100 test cases",
+       color = "Percent extra patients needed relative to standard approach") + 
+  theme(legend.position = "bottom") +
+  ggsave("msi_cost_saving.png", height = 8, width = 8)
+```
+
+## Molecular targeting 
+
+Idasanutlin is a Roche drug for TP53 cancer. It is currenlty tested in AML, aslo because AML has regular TP53 mutation calling as part of its molecular testing.
+BRCA mutations are frequently found in many tumors. 
+
+```{r, eval = FALSE}
+# I run a query in ICGC for BRCA mutations for: 
+#donor-ids-for-set-BRCA2, Frameshift _ Missense _ Stop Gained _ Exon
+
+sample <- read_delim(here("data/icgc/icgc-dataset-1573131324362/sample.tsv"),
+    "\t", escape_double = FALSE, trim_ws = TRUE)
+```
+
+I am interested in higher level data representation.
+
+```{r}
+library(cgdsr)
+mycgds = CGDS("https://www.cbioportal.org/")
+query = c('BRCA1','BRCA2')
+profile_query = "_mutations"
+case_query = "_all"
+
+studies <- read_delim(here::here("data/cbioportal/curated_studies.csv"), 
+    "\t", escape_double = FALSE, col_names = FALSE, 
+    trim_ws = TRUE) %>% select(name = X1) %>% 
+  left_join(getCancerStudies(mycgds)) %>% 
+  distinct(cancer_study_id, .keep_all = TRUE) %>% 
+  mutate(profile = paste0(cancer_study_id, profile_query),
+         cases = paste0(cancer_study_id, case_query)) %>% 
+  mutate(mutations = furrr::future_map2(profile, cases, ~ getProfileData(mycgds,query, .x, .y) %>% 
+                                          rownames_to_column("id") %>% 
+                                          as_tibble %>% 
+                                          mutate_all(funs(as.character)) %>% 
+                                          mutate_all(list(~ if_else(is.na(.), "NaN", .)))),
+         clinical = furrr::future_map(cases, ~ getClinicalData(mycgds,.x) %>% 
+                                          rownames_to_column("id") %>% 
+                                          as_tibble %>% 
+                                        janitor::clean_names()))
+
+saveRDS(studies, here::here(paste0("data/cbioportal/", paste0(paste(query, collapse = "_"), profile_query, case_query), ".Rds")))
+```
+
+
+```{r}
+query = c('BRCA1','BRCA2')
+profile_query = "_mutations"
+case_query = "_all"
+
+studies <- readRDS(here::here(paste0("data/cbioportal/", paste0(paste(query, collapse = "_"), profile_query, case_query), ".Rds")))
+
+studies %>% 
+  mutate(mut_simple = purrr::map2(mutations, clinical, ~ left_join(.x, .y %>% select(cancer_type, cancer_type_detailed, id), by = "id"))) %>% dplyr::select(cancer_study_id, mut_simple) %>% 
+  unnest(mut_simple) %>% 
+  gather(mutation, status, -id, -cancer_type, -cancer_type_detailed, -cancer_study_id) %>%
+    mutate(status = if_else(status == "NaN", FALSE, TRUE)) %>% 
+     count(mutation, status, cancer_type) %>% 
+     mutate(status = factor(status, levels = c(FALSE, TRUE))) %>%
+     complete(status, mutation, cancer_type) %>% 
+     mutate(n = ifelse(is.na(n), 0, n)) %>% 
+  arrange(desc(cancer_type))
 ```
 
