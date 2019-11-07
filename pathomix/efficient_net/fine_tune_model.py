@@ -27,7 +27,7 @@ def fine_tune_model(model,
         l.trainable = True
 
     sgd = optimizers.SGD(lr=lr, momentum=momentum, nesterov=nesterov, decay=decay)
-    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy', 'auroc'])
+    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy', auroc])
 
     model.fit_generator(
         train_generator,
