@@ -14,29 +14,29 @@ from fine_tune_model import fine_tune_model
 # general parameters
 efficient_net_type = 'B4'
 image_size = 224    # actual image size in pixels
-train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN'
-test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN'
+train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN_split'
+test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/VALIDATION'
 
 # parameters for ultimate layer training
 batch_size_ul = 32
 num_of_dense_layers = 0
 dense_layer_dim = 32
-epochs_ul = 3
-steps_per_epoch_train_ul = 3
-steps_per_epoch_val_ul = 1
-out_path = './model_ultimate'
+epochs_ul = 20
+steps_per_epoch_train_ul = 500
+steps_per_epoch_val_ul = 20
+out_path = './model_ultimate_with_proper_validation'
 
 # parameters for fine tuning training
 batch_size_ft = 8
-steps_per_epoch_train_ft = 1
-steps_per_epoch_val_ft = 3
-lr = 10**(-3)  # in paper between 1e-10 - 0.1
+epochs_ft = 40*8*4
+steps_per_epoch_train_ft = 500
+steps_per_epoch_val_ft = 80
+lr = 10**(-4)  # in paper between 1e-10 - 0.1
 decay = 10**(-2.28)  # interval size 0.4286
 momentum = 0.9
 nesterov = True
-epochs_ft = 5
 
-out_path_ft = './model_fine_tuned'
+out_path_ft = './model_fine_tuned_with_proper_validation'
 
 # shifting for data augmentation, will be set to 0 in efficient_net_type == 'B0'
 width_shift_range = 10
@@ -66,7 +66,10 @@ train_generator = train_datagen.flow_from_directory(
         train_folder,  # this is the target directory
         target_size=(input_size, input_size),  # all images will be resized to 150x150
         batch_size=batch_size_ul,
-        class_mode='binary') 
+        class_mode='binary',
+        shuffle=True,
+        seed=42,
+        )
 
 validation_generator = test_datagen.flow_from_directory(
         test_folder,
@@ -111,7 +114,10 @@ train_generator = train_datagen.flow_from_directory(
         train_folder,  # this is the target directory
         target_size=(input_size, input_size),  # all images will be resized to 150x150
         batch_size=batch_size_ft,
-        class_mode='binary')
+        class_mode='binary',
+        shuffle=True,
+        seed=42,
+        )
 
 validation_generator = test_datagen.flow_from_directory(
         test_folder,
