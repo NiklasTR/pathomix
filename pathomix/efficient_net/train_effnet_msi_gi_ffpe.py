@@ -15,7 +15,7 @@ from fine_tune_model import fine_tune_model
 efficient_net_type = 'B4'
 image_size = 224    # actual image size in pixels
 train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN_split'
-test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/Validation'
+test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/VALIDATION'
 
 # parameters for ultimate layer training
 batch_size_ul = 32
