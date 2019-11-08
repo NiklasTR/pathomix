@@ -2,13 +2,6 @@ from keras.layers import Dense
 from keras.models import Model
 import os
 
-from sklearn.metrics import roc_auc_score
-import tensorflow as tf
-
-
-def auroc(y_true, y_pred):
-    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
-
 def train_ultimate_layers(model,
                           train_generator,
                           validation_generator,

@@ -4,12 +4,13 @@ import datetime
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
 import tensorflow.keras.callbacks as callb
-import keras
 
 import efficientnet.keras as efn
 
 from train_ultimate_layers import train_ultimate_layers
 from fine_tune_model import fine_tune_model
+
+from utils.metrics import roc_callback, model_checkpointer
 
 # general parameters
 efficient_net_type = 'B4'
@@ -77,10 +78,17 @@ validation_generator = test_datagen.flow_from_directory(
         batch_size=batch_size_ul,
         class_mode='binary')
 
+callbacks = []
+callbacks.append(roc_callback)
+callbacks.append(model_checkpointer)
+
+
 if not os.path.isfile('{}.json'.format(out_path)):
 
+
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S_ul")  # log dir for tensorboard
-    tensor_board_callback_ul = callb.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)
+    tensor_board_callback_ul = callb.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False, update_freq='epoch')
+    callbacks.append(tensor_board_callback_ul)
 
     # choose model from
     # https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet
@@ -95,7 +103,7 @@ if not os.path.isfile('{}.json'.format(out_path)):
                                            epochs=epochs_ul,
                                            num_of_dense_layers=num_of_dense_layers,
                                            dense_layer_dim=dense_layer_dim,
-                                           tensor_board_callback=tensor_board_callback_ul,
+                                           tensor_board_callback=callbacks,
                                            bsave=True)
 
 # load json and create model
@@ -141,7 +149,4 @@ fine_tuned_model = fine_tune_model(model=loaded_model,
                                    epochs=epochs_ft,
                                    tensor_board_callback=tensor_board_callback_ft,
                                    bsave=True)
-
-
-
 
