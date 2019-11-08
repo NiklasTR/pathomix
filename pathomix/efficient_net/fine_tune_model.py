@@ -1,11 +1,6 @@
 from keras import optimizers
 import os
-from sklearn.metrics import roc_auc_score
-import tensorflow as tf
-
-
-def auroc(y_true, y_pred):
-    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
+from keras.callbacks.callbacks. import ModelCheckpoint
 
 
 def fine_tune_model(model,
@@ -22,12 +17,21 @@ def fine_tune_model(model,
                    tensor_board_callback=None,
                    bsave=False):
 
+    callbacks = []
+    if tensor_board_callback:
+        callbacks.append(tensor_board_callback)
+
+    check_pointer = ModelCheckpoint('best_model_ft.h5', monitor='val_acc', verbose=1, save_best_only=True,
+                                    save_weights_only=False, mode='max', period=5)
+
+    callbacks.append(check_pointer)
+
     # unfreeze all layers in pretrained model
     for l in model.layers:
         l.trainable = True
 
     sgd = optimizers.SGD(lr=lr, momentum=momentum, nesterov=nesterov, decay=decay)
-    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy', auroc])
+    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
 
     model.fit_generator(
         train_generator,
@@ -40,10 +44,10 @@ def fine_tune_model(model,
     if bsave:
         # serialize model to JSON
         model_json = model.to_json()
-        with open(os.path.join("{}.json".format(out_path)), "w") as json_file:
+        with open(os.path.join("{}_final.json".format(out_path)), "w") as json_file:
             json_file.write(model_json)
         # save weights
-        model.save_weights(os.path.join("{}.h5".format(out_path)))
+        model.save_weights(os.path.join("{}_final.h5".format(out_path)))
         print('model saved at {}'.format(out_path))
 
     return model
