@@ -39,15 +39,12 @@ def model_checkpointer():
     checkpointer = ModelCheckpoint(filepath='/weights.hdf5', verbose=1, save_best_only=True, period=5)
     return checkpointer
 
-
+'''
 class CumulativeHistory(History):
-    '''
-    History does not allow resume history. This class does.
-    '''
     def on_train_begin(self, logs=None):
         if not hasattr(self, 'epoch'):
             super(CumulativeHistory, self).on_train_begin(logs)
-
+'''
 
 class LossHistory(keras.callbacks.Callback):
     def on_epoche_begin(self, logs={}):
