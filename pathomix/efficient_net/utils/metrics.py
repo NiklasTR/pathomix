@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from keras.metrics import accuracy
+from keras.metrics import binary_accuracy
 
 from sklearn.metrics import roc_auc_score
 from keras.callbacks import Callback, ModelCheckpoint
@@ -57,7 +57,7 @@ class LossHistory(keras.callbacks.Callback):
         self.losses.append(logs.get('loss'))
 
 def get_accuracy(y_true, y_pred):
-    return accuracy(y_true, y_pred)
+    return binary_accuracy(y_true, y_pred)
 
 
 def get_auroc(y_true, y_pred):
