@@ -21,7 +21,7 @@ test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/VALIDATION'
 batch_size_ul = 32
 num_of_dense_layers = 0
 dense_layer_dim = 32
-epochs_ul = 20
+epochs_ul = 1
 steps_per_epoch_train_ul = 500
 steps_per_epoch_val_ul = 20
 out_path = './model_ultimate_with_proper_validation'
@@ -31,8 +31,11 @@ batch_size_ft = 8
 epochs_ft = 40*8*4
 steps_per_epoch_train_ft = 500
 steps_per_epoch_val_ft = 80
-lr = 10**(-4)  # in paper between 1e-10 - 0.1
-decay = 10**(-2.28)  # interval size 0.4286
+
+lr = 10**(-3)
+# interval size 0.4286, in paper: ration decay/lr ~ 10*(-6) to 10**(-3) at a batch size of 256
+# the last term : batch_size /256 is only an approximation for the difference in batch size, since we do not have a linear decay
+decay = 10**(-4.5) * lr *batch_size_ft/256.
 momentum = 0.9
 nesterov = True
 
