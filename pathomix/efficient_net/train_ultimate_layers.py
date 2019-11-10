@@ -34,6 +34,7 @@ def train_ultimate_layers(model,
         mymodel = Model(inputs=model.input, outputs=pred)
 
         # sgd = optimizers.SGD(learning_rate=0.01, decay=1e-6, momentum=0.0)
+
         mymodel.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
         #mymodel.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
 
