@@ -33,7 +33,7 @@ def fine_tune_model(model,
     #sgd = optimizers.SGD(lr=lr, momentum=momentum, nesterov=nesterov, decay=decay)
     #model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
 
-    adam = optimizers.Adam(learning_rate=0.00001, beta_1=0.9, beta_2=0.999, amsgrad=False)
+    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, amsgrad=False)
     model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['accuracy'])
 
     model.fit_generator(
