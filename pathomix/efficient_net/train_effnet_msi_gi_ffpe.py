@@ -24,7 +24,7 @@ epochs_ul = 1
 #steps_per_epoch_train_ul = 500
 steps_per_epoch_train_ul = 5
 steps_per_epoch_val_ul = 20
-out_path = './model_ultimate_with_proper_validation'
+out_path = './model_ultimate_with_proper_validation_{}'.format(efficient_net_type)
 
 # parameters for fine tuning training
 #epochs_ft = 40*8*4
@@ -33,7 +33,7 @@ epochs_ft = 4
 steps_per_epoch_train_ft = 5
 steps_per_epoch_val_ft = 80
 
-out_path_ft = './model_fine_tuned_with_proper_validation'
+out_path_ft = './model_fine_tuned_with_proper_validation_{}'.format(efficient_net_type)
 
 # shifting for data augmentation, will be set to 0 in efficient_net_type == 'B0'
 width_shift_range = 10
