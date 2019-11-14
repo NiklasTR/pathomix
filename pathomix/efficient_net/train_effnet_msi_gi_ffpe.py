@@ -98,7 +98,12 @@ if not os.path.isfile('{}.json'.format(out_path)):
 
     # choose model from
     # https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet
-    model = efn.EfficientNetB4(weights='imagenet')
+    if efficient_net_type == 'B0':
+        model = efn.EfficientNetB0(weights='imagenet')
+    elif efficient_net_type == 'B3':
+        model = efn.EfficientNetB3(weights='imagenet')
+    elif efficient_net_type == 'B4':
+        model = efn.EfficientNetB4(weights='imagenet')
 
     model_ultimate = train_ultimate_layers(model=model,
                                            train_generator=train_generator,
