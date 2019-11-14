@@ -47,8 +47,8 @@ if efficient_net_type == 'B0':
     input_size = 224  # input size needed for network in pixels
     width_shift_range = 0
     height_shift_range = 0
-    batch_size_ul = 512
-    batch_size_ft = 64
+    batch_size_ul = 512 # for p2
+    batch_size_ft = 64 # for p2
 elif efficient_net_type == 'B3':
     input_size = 300
 elif efficient_net_type == 'B4':

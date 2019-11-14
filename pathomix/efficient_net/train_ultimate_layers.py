@@ -47,7 +47,7 @@ def train_ultimate_layers(model,
                 callbacks=[tensor_board_callback],
                 max_queue_size=10,
                 workers=4,
-                use_multiprocessing=True)
+                use_multiprocessing=False)
 
         if bsave:
                 # serialize model to JSON
