@@ -5,6 +5,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
 import tensorflow.keras.callbacks as callb
 import keras
+import tf
 
 import efficientnet.keras as efn
 
@@ -18,7 +19,6 @@ train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN_spli
 test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/VALIDATION'
 
 # parameters for ultimate layer training
-batch_size_ul = 32
 num_of_dense_layers = 0
 dense_layer_dim = 32
 epochs_ul = 1
@@ -27,12 +27,13 @@ steps_per_epoch_val_ul = 20
 out_path = './model_ultimate_with_proper_validation'
 
 # parameters for fine tuning training
-batch_size_ft = 8
 epochs_ft = 40*8*4
 steps_per_epoch_train_ft = 500
 steps_per_epoch_val_ft = 80
 
 lr = 10**(-3)
+#lr_cosine = tf.train.cosine_decay(learning_rate=lr,
+#                                  global_step=global_step)
 # interval size 0.4286, in paper: ration decay/lr ~ 10*(-6) to 10**(-3) at a batch size of 256
 # the last term : batch_size /256 is only an approximation for the difference in batch size, since we do not have a linear decay
 decay = 10**(-4.5) * lr *batch_size_ft/256.
@@ -49,10 +50,14 @@ if efficient_net_type == 'B0':
     input_size = 224  # input size needed for network in pixels
     width_shift_range = 0
     height_shift_range = 0
+    batch_size_ul = 64
+    batch_size_ft = 32
 elif efficient_net_type == 'B3':
     input_size = 300
 elif efficient_net_type == 'B4':
     input_size = 380
+    batch_size_ul = 32
+    batch_size_ft = 8
 
 
 train_datagen = ImageDataGenerator(
@@ -72,17 +77,22 @@ train_generator = train_datagen.flow_from_directory(
         class_mode='binary',
         shuffle=True,
         seed=42,
+        fill_mode='constant',
+        cval=0
         )
 
 validation_generator = test_datagen.flow_from_directory(
         test_folder,
         target_size=(input_size, input_size),
         batch_size=batch_size_ul,
-        class_mode='binary')
+        class_mode='binary',
+        fill_mode='constant',
+        cval=0
+        )
 
+model_in_cache = False
 if not os.path.isfile('{}.json'.format(out_path)):
-
-    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S_ul")  # log dir for tensorboard
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S_{}_ul".format(efficient_net_type))  # log dir for tensorboard
     tensor_board_callback_ul = callb.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)
 
     # choose model from
@@ -101,17 +111,23 @@ if not os.path.isfile('{}.json'.format(out_path)):
                                            tensor_board_callback=tensor_board_callback_ul,
                                            bsave=True)
 
-# load json and create model
-json_file = open('{}.json'.format(out_path), 'r')
-loaded_model_json = json_file.read()
-json_file.close()
+    model_in_cache = True
+
+if not model_in_cache:
+    # load json and create model
+    json_file = open('{}.json'.format(out_path), 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
 
 
-loaded_model = model_from_json(loaded_model_json)
-# load weights into new model
-print('load ultimate model from {}'.format(out_path))
-loaded_model.load_weights("{}.h5".format(out_path))
-print("Loaded model from disk")
+    loaded_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    print('load ultimate model from {}'.format(out_path))
+    loaded_model.load_weights("{}.h5".format(out_path))
+    print("Loaded model from disk")
+
+else:
+    loaded_model = model_ultimate
 
 train_generator = train_datagen.flow_from_directory(
         train_folder,  # this is the target directory
@@ -120,15 +136,20 @@ train_generator = train_datagen.flow_from_directory(
         class_mode='binary',
         shuffle=True,
         seed=42,
+        fill_mode='constant',
+        cval=0,
         )
 
 validation_generator = test_datagen.flow_from_directory(
         test_folder,
         target_size=(input_size, input_size),
         batch_size=batch_size_ft,
-        class_mode='binary')
+        class_mode='binary',
+        fill_mode='constant',
+        cval=0,
+        )
 
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S_ft") # log dir for tensorboard
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S_{}_ft".format(efficient_net_type)) # log dir for tensorboard
 tensor_board_callback_ft = callb.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)
 
 fine_tuned_model = fine_tune_model(model=loaded_model,
