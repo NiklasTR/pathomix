@@ -5,7 +5,6 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
 import tensorflow.keras.callbacks as callb
 import keras
-import tf
 
 import efficientnet.keras as efn
 
@@ -66,9 +65,15 @@ train_datagen = ImageDataGenerator(
         width_shift_range=width_shift_range,
         height_shift_range=width_shift_range,
         horizontal_flip=True,
-        vertical_flip=True)
+        vertical_flip=True,
+        fill_mode='constant',
+        cval=0
+        )
 
-test_datagen = ImageDataGenerator(rescale=1./255)
+test_datagen = ImageDataGenerator(rescale=1./255,
+                                  fill_mode='constant',
+                                  cval=0
+                                  )
 
 train_generator = train_datagen.flow_from_directory(
         train_folder,  # this is the target directory
@@ -76,18 +81,14 @@ train_generator = train_datagen.flow_from_directory(
         batch_size=batch_size_ul,
         class_mode='binary',
         shuffle=True,
-        seed=42,
-        fill_mode='constant',
-        cval=0
+        seed=42
         )
 
 validation_generator = test_datagen.flow_from_directory(
         test_folder,
         target_size=(input_size, input_size),
         batch_size=batch_size_ul,
-        class_mode='binary',
-        fill_mode='constant',
-        cval=0
+        class_mode='binary'
         )
 
 model_in_cache = False
@@ -136,8 +137,6 @@ train_generator = train_datagen.flow_from_directory(
         class_mode='binary',
         shuffle=True,
         seed=42,
-        fill_mode='constant',
-        cval=0,
         )
 
 validation_generator = test_datagen.flow_from_directory(
@@ -145,8 +144,6 @@ validation_generator = test_datagen.flow_from_directory(
         target_size=(input_size, input_size),
         batch_size=batch_size_ft,
         class_mode='binary',
-        fill_mode='constant',
-        cval=0,
         )
 
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S_{}_ft".format(efficient_net_type)) # log dir for tensorboard
