@@ -44,7 +44,10 @@ def train_ultimate_layers(model,
                 epochs=epochs,
                 validation_data=validation_generator,
                 validation_steps=steps_per_epoch_val,
-                callbacks=[tensor_board_callback])
+                callbacks=[tensor_board_callback],
+                max_queue_size=10,
+                workers=4,
+                use_multiprocessing=True)
 
         if bsave:
                 # serialize model to JSON

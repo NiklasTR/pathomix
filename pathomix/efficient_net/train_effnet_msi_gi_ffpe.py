@@ -11,6 +11,10 @@ import efficientnet.keras as efn
 from train_ultimate_layers import train_ultimate_layers
 from fine_tune_model import fine_tune_model
 
+# general notes
+# ratio mss/(mss+msi) = 0.58, accs above this value are better than guessing.
+# not given that they are significantly better than guessing
+
 # general parameters
 efficient_net_type = 'B0'
 image_size = 224    # actual image size in pixels
@@ -43,8 +47,8 @@ if efficient_net_type == 'B0':
     input_size = 224  # input size needed for network in pixels
     width_shift_range = 0
     height_shift_range = 0
-    batch_size_ul = 64
-    batch_size_ft = 32
+    batch_size_ul = 512
+    batch_size_ft = 64
 elif efficient_net_type == 'B3':
     input_size = 300
 elif efficient_net_type == 'B4':
