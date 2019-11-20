@@ -55,3 +55,10 @@ def fine_tune_model(model,
 
     return model
 
+
+def create_model_for_sigopt(assignments):
+    lr = assignments['lr']
+    decay = assignments['decay']
+
+    fine_tune_model()
+

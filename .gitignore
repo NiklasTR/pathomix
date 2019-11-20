@@ -20,3 +20,7 @@ data/icgc/donor-ids-for-set-BRCA2, Frameshift _ Missense _ Stop Gained _ Exon.ts
 data/icgc/icgc-dataset-1573131324362.tar
 data/icgc/icgc-dataset-1573131324362/.DS_Store
 data/icgc/icgc-dataset-1573131324362/donor.tsv.gz
+
+venv_pathomix/
+.idea/
+efficient_net/
