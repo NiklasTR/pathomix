@@ -1,5 +1,6 @@
 from keras.models import model_from_json
 from keras import optimizers
+from keras import backend as K
 
 
 class EffNetFT:
