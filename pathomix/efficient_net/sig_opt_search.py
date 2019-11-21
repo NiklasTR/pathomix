@@ -1,8 +1,17 @@
+import datetime
+
 from sigopt import Connection
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
 from keras import optimizers
+from importlib.machinery import SourceFileLoader
+import tensorflow.keras.callbacks as callb
 
+from pathomix.efficient_net.models_own.eff_net import EffNetFT
+
+cf = SourceFileLoader('cf', 'configs/sig_opt_ft_config.py').load_module()
+
+'''
 def create_model(assignments):
     lr = assignments['lr']
     decay = assignments['decay']
@@ -31,40 +40,41 @@ def create_model(assignments):
         validation_data=validation_generator,
         validation_steps=steps_per_epoch_val,
         callbacks=[tensor_board_callback])
+'''
 
-def evalulate_model(assignments):
-    model = create_model(assignments)
+
+def evaluate_model(assignments, steps_per_epoch_train, epochs, validation_generator,
+                   steps_per_epoch_val, tensor_board_callback, momentu, nesterov, model_path):
+    model = EffNetFT(steps_per_epoch_train,
+                 epochs,
+                 validation_generator,
+                 steps_per_epoch_val,
+                 tensor_board_callback,
+                 momentum=momentu,
+                 nesterov=nesterov,
+                 model_path=model_path)
+
+    model = model.train(assignments)
     acc = model.evaluate(x=validation_generator, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None, callbacks=None, max_queue_size=10, workers=4, use_multiprocessing=False)
     return acc
 
 
-# general parameters
-efficient_net_type = 'B0'
-image_size = 224    # actual image size in pixels
-train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN_split'
-test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/VALIDATION'
+efficient_net_type = cf.efficient_net_type
+lr = cf.lr
+batch_size_ft = cf.batch_size_ft
+train_folder = cf.train_folder
+test_folder = cf.test_folder
+random_seed = cf.random_seed
 
-# parameters for ultimate layer training
-num_of_dense_layers = 0
-dense_layer_dim = 32
-epochs_ul = 1
-#steps_per_epoch_train_ul = 500
-steps_per_epoch_train_ul = 5
-steps_per_epoch_val_ul = 20
-out_path = './model_ultimate_with_proper_validation_{}'.format(efficient_net_type)
+steps_per_epoch_train = cf.steps_per_epoch_train_ft
+steps_per_epoch_val = cf.steps_per_epoche_val
+epochs = cf.epochs_ft
 
-# parameters for fine tuning training
-#epochs_ft = 40*8*4
-epochs_ft = 4
-#steps_per_epoch_train_ft = 500
-steps_per_epoch_train_ft = 5
-steps_per_epoch_val_ft = 80
+model_path = cf.out_path_ft
 
-out_path_ft = './model_fine_tuned_with_proper_validation_{}'.format(efficient_net_type)
+momentum = cf.momentum
+nesterov = cf.nesterov
 
-# shifting for data augmentation, will be set to 0 in efficient_net_type == 'B0'
-width_shift_range = 10
-height_shift_range = 10
 # determine input size from model name. input size is fixed
 if efficient_net_type == 'B0':
     input_size = 224  # input size needed for network in pixels
@@ -79,27 +89,21 @@ elif efficient_net_type == 'B4':
     batch_size_ul = 32
     batch_size_ft = 8
 
-lr = 10**(-3)
-# interval size 0.4286, in paper: ration decay/lr ~ 10*(-6) to 10**(-3) at a batch size of 256
-# the last term : batch_size /256 is only an approximation for the difference in batch size, since we do not have a linear decay
-decay = 10**(-4.5) * lr *batch_size_ft/256.
-momentum = 0.9
-nesterov = True
-
 # insert token here
 conn = Connection(client_token="MBPBJXVLBQAJDOJNMRXQQXNCLQUOZFLYFMCZUWBJWKIVBKTC")
 
+# define range for decay parameters for hyperparameter search
 lower_decay = 0.000001 * lr * batch_size_ft/256.
 upper_decay = 0.001 * lr * batch_size_ft/256.
 
 experiment = conn.experiments().create(
-    name='Franke Optimization (Python)',
+    name='Optimize FFPE MSI classification with efficient net',
     # Define which parameters you would like to tune
     parameters=[
         dict(name='lr', type='double', bounds=dict(min=0.0001, max=0.1)),
         dict(name='decay', type='double', bounds=dict(min=lower_decay, max=upper_decay)),
     ],
-    metrics=[dict(name='function_value', objective='maximize')],
+    metrics=[dict(name='accuracy', objective='maximize')],
     parallel_bandwidth=1,
     # Define an Observation Budget for your experiment
     observation_budget=30,
@@ -131,7 +135,7 @@ train_generator = train_datagen.flow_from_directory(
         batch_size=batch_size_ft,
         class_mode='binary',
         shuffle=True,
-        seed=42,
+        seed=random_seed,
         )
 
 validation_generator = test_datagen.flow_from_directory(
@@ -141,11 +145,18 @@ validation_generator = test_datagen.flow_from_directory(
         class_mode='binary',
         )
 
+log_dir = "logs/fit/" + datetime.datetime.now().strftime(
+    "%Y%m%d-%H%M%S_{}_ft_sigopt".format(efficient_net_type))  # log dir for tensorboard
+tensor_board_callback = callb.TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, write_images=True)
+
 
 for _ in range(experiment.observation_budget):
     suggestion = conn.experiments(experiment.id).suggestions().create()
     assignments = suggestion.assignments
-    value = evaluate_model(assignments)
+    value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs,
+                           validation_generator=validation_generator, steps_per_epoch_val=steps_per_epoch_val,
+                           tensor_board_callback=tensor_board_callback, momentum=momentum, nesterov=nesterov,
+                           model_path=model_path)
 
     conn.experiments(experiment.id).observations().create(
         suggestion=suggestion.id,
@@ -154,7 +165,8 @@ for _ in range(experiment.observation_budget):
 
 assignments = conn.experiments(experiment.id).best_assignments().fetch().data[0].assignments
 
+print('best assignments')
 print(assignments)
 
 # This is a SigOpt-tuned model
-classifier = create_model(assignments)
+#classifier = create_model(assignments)
