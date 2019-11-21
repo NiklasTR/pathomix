@@ -1,5 +1,6 @@
 import datetime
 
+from keras import backend as K
 from sigopt import Connection
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
@@ -7,7 +8,10 @@ from keras import optimizers
 from importlib.machinery import SourceFileLoader
 import tensorflow.keras.callbacks as callb
 
-from pathomix.efficient_net.models_own.eff_net import EffNetFT
+from models_own.eff_net import EffNetFT
+
+def swish_activation(x):
+    return (K.sigmoid(x) * x)
 
 cf = SourceFileLoader('cf', 'configs/sig_opt_ft_config.py').load_module()
 
