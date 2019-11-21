@@ -44,13 +44,13 @@ def create_model(assignments):
 
 
 def evaluate_model(assignments, steps_per_epoch_train, epochs, validation_generator,
-                   steps_per_epoch_val, tensor_board_callback, momentu, nesterov, model_path):
+                   steps_per_epoch_val, tensor_board_callback, momentum, nesterov, model_path):
     model = EffNetFT(steps_per_epoch_train,
                  epochs,
                  validation_generator,
                  steps_per_epoch_val,
                  tensor_board_callback,
-                 momentum=momentu,
+                 momentum=momentum,
                  nesterov=nesterov,
                  model_path=model_path)
 
@@ -67,7 +67,7 @@ test_folder = cf.test_folder
 random_seed = cf.random_seed
 
 steps_per_epoch_train = cf.steps_per_epoch_train_ft
-steps_per_epoch_val = cf.steps_per_epoche_val
+steps_per_epoch_val = cf.steps_per_epoch_val_ft
 epochs = cf.epochs_ft
 
 model_path = cf.out_path_ft
@@ -107,7 +107,7 @@ experiment = conn.experiments().create(
     parallel_bandwidth=1,
     # Define an Observation Budget for your experiment
     observation_budget=30,
-    project="MSI_GI_FFPE",
+    project="pathomix",
 )
 print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
 
