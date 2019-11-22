@@ -5,7 +5,7 @@ import efficientnet.keras as efn
 
 
 
-class EffNetFT(efn):
+class EffNetFT:
     def __init__(self,
                  steps_per_epoch_train=None,
                  epochs=None,
@@ -24,7 +24,7 @@ class EffNetFT(efn):
         self.nesterov = nesterov
 
         if model_path:
-            self.model=self.load_model(model_path)
+            self.model = self.load_model(model_path)
 
 
     def create_model(self):
@@ -41,6 +41,7 @@ class EffNetFT(efn):
         print('load ultimate model from {}'.format(model_path))
         loaded_model.load_weights("{}.h5".format(model_path))
         print("Loaded model from disk")
+        self.model = loaded_model
 
         return loaded_model
 
