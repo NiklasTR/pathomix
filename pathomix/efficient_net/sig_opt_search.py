@@ -48,10 +48,11 @@ def create_model(assignments):
 '''
 
 
-def evaluate_model(assignments, steps_per_epoch_train, epochs, validation_generator,
+def evaluate_model(assignments, steps_per_epoch_train, epochs, train_generator, validation_generator,
                    steps_per_epoch_val, tensor_board_callback, momentum, nesterov, model_path):
     model = EffNetFT(steps_per_epoch_train,
                  epochs,
+                 train_generator,
                  validation_generator,
                  steps_per_epoch_val,
                  tensor_board_callback,
@@ -59,8 +60,8 @@ def evaluate_model(assignments, steps_per_epoch_train, epochs, validation_genera
                  nesterov=nesterov,
                  model_path=model_path)
 
-    model = model.train(assignments)
-    acc = model.evaluate(x=validation_generator, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None, callbacks=None, max_queue_size=10, workers=4, use_multiprocessing=False)
+    model_trained = model.train(assignments)
+    acc = model_trained.evaluate(x=validation_generator, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None, callbacks=None, max_queue_size=10, workers=4, use_multiprocessing=False)
     return acc
 
 
@@ -160,7 +161,7 @@ tensor_board_callback = callb.TensorBoard(log_dir=log_dir, histogram_freq=1, wri
 #
 
 assignments = {'lr': 0.001, 'decay': 0.00001}
-value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs,
+value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs, train_generator=train_generator,
                        validation_generator=validation_generator, steps_per_epoch_val=steps_per_epoch_val,
                        tensor_board_callback=tensor_board_callback, momentum=momentum, nesterov=nesterov,
                        model_path=model_path)
@@ -169,6 +170,7 @@ value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train,
 for _ in range(experiment.observation_budget):
     suggestion = conn.experiments(experiment.id).suggestions().create()
     assignments = suggestion.assignments
+    print('current assignments: {}'.format(assignments))
     value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs,
                            validation_generator=validation_generator, steps_per_epoch_val=steps_per_epoch_val,
                            tensor_board_callback=tensor_board_callback, momentum=momentum, nesterov=nesterov,

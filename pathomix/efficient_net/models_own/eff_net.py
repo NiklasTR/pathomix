@@ -9,6 +9,7 @@ class EffNetFT:
     def __init__(self,
                  steps_per_epoch_train=None,
                  epochs=None,
+                 train_generator=None,
                  validation_generator=None,
                  steps_per_epoch_val=None,
                  tensor_board_callback=None,
@@ -17,6 +18,7 @@ class EffNetFT:
                  model_path=None):
         self.steps_per_epoch_train = steps_per_epoch_train
         self.epochs = epochs
+        self.train_generator = train_generator
         self.validation_generator = validation_generator
         self.steps_per_epoch_val = steps_per_epoch_val
         self.tensor_board_callback = tensor_board_callback
@@ -61,6 +63,7 @@ class EffNetFT:
             epochs=self.epochs,
             validation_data=self.validation_generator,
             validation_steps=self.steps_per_epoch_val,
-            callbacks=[self.tensor_board_callback])
+            #callbacks=[self.tensor_board_callback]
+            )
 
         return self.model
