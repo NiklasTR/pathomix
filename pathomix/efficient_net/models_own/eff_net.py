@@ -1,9 +1,11 @@
 from keras.models import model_from_json
 from keras import optimizers
 from keras import backend as K
+import efficientnet.keras as efn
 
 
-class EffNetFT:
+
+class EffNetFT(efn):
     def __init__(self,
                  steps_per_epoch_train=None,
                  epochs=None,
