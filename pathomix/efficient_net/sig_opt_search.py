@@ -1,17 +1,18 @@
 import datetime
 
-from keras import backend as K
 from sigopt import Connection
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
+from keras import backend as K
 from keras import optimizers
 from importlib.machinery import SourceFileLoader
 import tensorflow.keras.callbacks as callb
 
-from models_own.eff_net import EffNetFT
+import keras
 
-def swish_activation(x):
-    return (K.sigmoid(x) * x)
+import efficientnet.keras as efn
+
+from models_own.eff_net import EffNetFT
 
 cf = SourceFileLoader('cf', 'configs/sig_opt_ft_config.py').load_module()
 
@@ -93,6 +94,7 @@ elif efficient_net_type == 'B4':
     batch_size_ul = 32
     batch_size_ft = 8
 
+'''
 # insert token here
 conn = Connection(client_token="MBPBJXVLBQAJDOJNMRXQQXNCLQUOZFLYFMCZUWBJWKIVBKTC")
 
@@ -114,7 +116,7 @@ experiment = conn.experiments().create(
     project="pathomix",
 )
 print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
-
+'''
 #create data generators
 
 train_datagen = ImageDataGenerator(
@@ -153,7 +155,17 @@ log_dir = "logs/fit/" + datetime.datetime.now().strftime(
     "%Y%m%d-%H%M%S_{}_ft_sigopt".format(efficient_net_type))  # log dir for tensorboard
 tensor_board_callback = callb.TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, write_images=True)
 
+#
+# remove afterwards
+#
 
+assignments = {'lr': 0.001, 'decay': 0.00001}
+value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs,
+                       validation_generator=validation_generator, steps_per_epoch_val=steps_per_epoch_val,
+                       tensor_board_callback=tensor_board_callback, momentum=momentum, nesterov=nesterov,
+                       model_path=model_path)
+
+'''
 for _ in range(experiment.observation_budget):
     suggestion = conn.experiments(experiment.id).suggestions().create()
     assignments = suggestion.assignments
@@ -171,6 +183,6 @@ assignments = conn.experiments(experiment.id).best_assignments().fetch().data[0]
 
 print('best assignments')
 print(assignments)
-
+'''
 # This is a SigOpt-tuned model
 #classifier = create_model(assignments)

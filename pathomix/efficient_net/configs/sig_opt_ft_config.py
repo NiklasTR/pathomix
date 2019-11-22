@@ -22,7 +22,7 @@ steps_per_epoch_train_ft = 5
 #steps_per_epoch_val_ft = 80
 steps_per_epoch_val_ft = 8
 
-out_path_ft = './model_fine_tuned_with_proper_validation_{}.json'.format(efficient_net_type)
+out_path_ft = './model_fine_tuned_with_proper_validation_{}'.format(efficient_net_type)
 
 # shifting for data augmentation, will be set to 0 in efficient_net_type == 'B0'
 width_shift_range = 10

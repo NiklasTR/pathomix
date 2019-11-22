@@ -30,10 +30,10 @@ class EffNetFT:
 
 
     def load_model(self, model_path):
-        json_file = open(model_path, 'r')
+
+        json_file = open('{}.json'.format(model_path), 'r')
         loaded_model_json = json_file.read()
         json_file.close()
-
         loaded_model = model_from_json(loaded_model_json)
         # load weights into new model
         print('load ultimate model from {}'.format(model_path))
