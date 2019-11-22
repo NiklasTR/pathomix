@@ -112,7 +112,7 @@ experiment = conn.experiments().create(
     metrics=[dict(name='accuracy', objective='maximize')],
     parallel_bandwidth=1,
     # Define an Observation Budget for your experiment
-    observation_budget=30,
+    observation_budget=3,
     project="pathomix",
 )
 print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
