@@ -171,7 +171,7 @@ for _ in range(experiment.observation_budget):
     suggestion = conn.experiments(experiment.id).suggestions().create()
     assignments = suggestion.assignments
     print('current assignments: {}'.format(assignments))
-    value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs,
+    value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs, train_generator=train_generator,
                            validation_generator=validation_generator, steps_per_epoch_val=steps_per_epoch_val,
                            tensor_board_callback=tensor_board_callback, momentum=momentum, nesterov=nesterov,
                            model_path=model_path)
