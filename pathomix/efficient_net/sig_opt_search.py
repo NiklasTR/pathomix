@@ -95,7 +95,6 @@ elif efficient_net_type == 'B4':
     batch_size_ul = 32
     batch_size_ft = 8
 
-'''
 # insert token here
 conn = Connection(client_token="MBPBJXVLBQAJDOJNMRXQQXNCLQUOZFLYFMCZUWBJWKIVBKTC")
 
@@ -117,7 +116,7 @@ experiment = conn.experiments().create(
     project="pathomix",
 )
 print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
-'''
+
 #create data generators
 
 train_datagen = ImageDataGenerator(
@@ -156,6 +155,7 @@ log_dir = "logs/fit/" + datetime.datetime.now().strftime(
     "%Y%m%d-%H%M%S_{}_ft_sigopt".format(efficient_net_type))  # log dir for tensorboard
 tensor_board_callback = callb.TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, write_images=True)
 
+'''
 #
 # remove afterwards
 #
@@ -185,6 +185,5 @@ assignments = conn.experiments(experiment.id).best_assignments().fetch().data[0]
 
 print('best assignments')
 print(assignments)
-'''
 # This is a SigOpt-tuned model
 #classifier = create_model(assignments)
