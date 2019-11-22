@@ -61,7 +61,7 @@ def evaluate_model(assignments, steps_per_epoch_train, epochs, train_generator, 
                  model_path=model_path)
 
     model_trained = model.train(assignments)
-    acc = model_trained.evaluate(x=validation_generator, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None, max_queue_size=10, workers=4, use_multiprocessing=False)
+    acc = model_trained.evaluate_generator(generator=validation_generator, verbose=1, steps=len(validation_generator), max_queue_size=10, workers=4, use_multiprocessing=False)[1]
     return acc
 
 
