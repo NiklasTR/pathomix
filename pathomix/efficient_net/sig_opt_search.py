@@ -87,7 +87,8 @@ if efficient_net_type == 'B0':
     width_shift_range = 0
     height_shift_range = 0
     batch_size_ul = 512 # for p2
-    batch_size_ft = 64 # for p2
+    #batch_size_ft = 64 # for p2
+    batch_size_ft = 512 # for p2
 elif efficient_net_type == 'B3':
     input_size = 300
 elif efficient_net_type == 'B4':
@@ -98,22 +99,29 @@ elif efficient_net_type == 'B4':
 # insert token here
 conn = Connection(client_token="MBPBJXVLBQAJDOJNMRXQQXNCLQUOZFLYFMCZUWBJWKIVBKTC")
 
+# general parameters for sigopt
+observation_budget = cf.observation_budget
+experiment_name = cf.experiment_name
+project_name = cf.project_name
+
 # define range for decay parameters for hyperparameter search
-lower_decay = 0.000001 * lr * batch_size_ft/256.
-upper_decay = 0.001 * lr * batch_size_ft/256.
+lr_upper =  cf.lr_upper
+lr_lower = cf.lr_lower
+lower_decay = cf.lower_decay
+upper_decay = cf.upper_decay
 
 experiment = conn.experiments().create(
-    name='Optimize FFPE MSI classification with efficient net',
+    name=experiment_name,
     # Define which parameters you would like to tune
     parameters=[
-        dict(name='lr', type='double', bounds=dict(min=0.0001, max=0.1)),
+        dict(name='lr', type='double', bounds=dict(min=lr_lower, max=lr_upper)),
         dict(name='decay', type='double', bounds=dict(min=lower_decay, max=upper_decay)),
     ],
     metrics=[dict(name='accuracy', objective='maximize')],
     parallel_bandwidth=1,
     # Define an Observation Budget for your experiment
-    observation_budget=3,
-    project="pathomix",
+    observation_budget=observation_budget,
+    project=project_name,
 )
 print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
 

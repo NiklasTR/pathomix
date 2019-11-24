@@ -122,7 +122,7 @@ if not os.path.isfile('{}.json'.format(out_path)):
                                            bsave=True)
 
     model_in_cache = True
-
+'''
 if not model_in_cache:
     # load json and create model
     json_file = open('{}.json'.format(out_path), 'r')
@@ -171,7 +171,7 @@ fine_tuned_model = fine_tune_model(model=loaded_model,
                                    epochs=epochs_ft,
                                    tensor_board_callback=tensor_board_callback_ft,
                                    bsave=True)
-
+'''
 
 
 

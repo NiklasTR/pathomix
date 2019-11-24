@@ -1,4 +1,5 @@
 # general parameters
+random_seed = 42
 efficient_net_type = 'B0'
 image_size = 224    # actual image size in pixels
 train_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/TRAIN_split'
@@ -16,9 +17,10 @@ out_path = './model_ultimate_with_proper_validation_{}'.format(efficient_net_typ
 '''
 # parameters for fine tuning training
 #epochs_ft = 40*8*4
-epochs_ft = 4
-#steps_per_epoch_train_ft = 500
-steps_per_epoch_train_ft = 5
+epochs_ft = 40*4
+#epochs_ft = 4
+steps_per_epoch_train_ft = 500
+#steps_per_epoch_train_ft = 5
 #steps_per_epoch_val_ft = 80
 steps_per_epoch_val_ft = 8
 
@@ -48,9 +50,13 @@ decay = 10**(-4.5) * lr *batch_size_ft/256.
 momentum = 0.9
 nesterov = True
 
-
+# sig opt parameters
+lr_lower = 0.0001
+lr_upper = 0.1
 
 lower_decay = 0.000001 * lr * batch_size_ft/256.
 upper_decay = 0.001 * lr * batch_size_ft/256.
 
-random_seed = 42
+observation_budget = 3
+experiment_name = 'Optimize FFPE MSI classification with efficient net'
+project_name = "pathomix"
