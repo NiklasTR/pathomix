@@ -3,7 +3,8 @@ import datetime
 
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import model_from_json
-import tensorflow.keras.callbacks as callb
+#import tensorflow.keras.callbacks as callb
+import keras.callbacks as callb
 import keras
 
 import efficientnet.keras as efn
