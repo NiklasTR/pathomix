@@ -26,8 +26,8 @@ test_folder = '/home/ubuntu/pathomix/data/msi_gi_ffpe_cleaned/CRC_DX/VALIDATION'
 num_of_dense_layers = 0
 dense_layer_dim = 32
 epochs_ul = 1
-#steps_per_epoch_train_ul = 500
-steps_per_epoch_train_ul = 5
+steps_per_epoch_train_ul = 500
+#steps_per_epoch_train_ul = 5
 steps_per_epoch_val_ul = 20
 out_path = './model_ultimate_with_proper_validation_{}'.format(efficient_net_type)
 
