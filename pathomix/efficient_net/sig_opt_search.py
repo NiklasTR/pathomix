@@ -40,7 +40,6 @@ def evaluate_model(assignments, steps_per_epoch_train, epochs, train_generator, 
 
 
 efficient_net_type = cf.efficient_net_type
-lr = cf.lr
 batch_size_ft = cf.batch_size_ft
 train_folder = cf.train_folder
 test_folder = cf.test_folder
