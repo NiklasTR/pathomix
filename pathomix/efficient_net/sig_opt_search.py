@@ -16,40 +16,9 @@ from models_own.eff_net import EffNetFT
 
 cf = SourceFileLoader('cf', 'configs/sig_opt_ft_config.py').load_module()
 
-'''
-def create_model(assignments):
-    lr = assignments['lr']
-    decay = assignments['decay']
-    # hard coded for now
-    momentum = 0.9
-    nesterov = True
-    out_path = TODO
-    json_file = open('{}.json'.format(out_path), 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-
-
-    loaded_model = model_from_json(loaded_model_json)
-    # load weights into new model
-    print('load ultimate model from {}'.format(out_path))
-    loaded_model.load_weights("{}.h5".format(out_path))
-    print("Loaded model from disk")
-
-
-    sgd = optimizers.SGD(lr=lr, momentum=momentum, nesterov=nesterov, decay=decay)
-    loaded_model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
-    loaded_model.fit_generator(
-        train_generator,
-        steps_per_epoch=steps_per_epoch_train,
-        epochs=epochs,
-        validation_data=validation_generator,
-        validation_steps=steps_per_epoch_val,
-        callbacks=[tensor_board_callback])
-'''
-
-
 def evaluate_model(assignments, steps_per_epoch_train, epochs, train_generator, validation_generator,
-                   steps_per_epoch_val, tensor_board_callback, momentum, nesterov, model_path):
+                   steps_per_epoch_val, tensor_board_callback, momentum, nesterov, model_path, workers=4,
+                   use_multiprocessing=False, max_queue_size=100):
     model = EffNetFT(steps_per_epoch_train,
                  epochs,
                  train_generator,
@@ -58,10 +27,15 @@ def evaluate_model(assignments, steps_per_epoch_train, epochs, train_generator, 
                  tensor_board_callback,
                  momentum=momentum,
                  nesterov=nesterov,
-                 model_path=model_path)
+                 model_path=model_path,
+                 workers=workers,
+                 use_multiprocessing=use_multiprocessing,
+                 max_queue_size=max_queue_size
+                 )
 
     model_trained = model.train(assignments)
-    acc = model_trained.evaluate_generator(generator=validation_generator, verbose=1, steps=len(validation_generator), max_queue_size=10, workers=4, use_multiprocessing=False)[1]
+    acc = model_trained.evaluate_generator(generator=validation_generator, verbose=1, steps=len(validation_generator),
+                                           max_queue_size=max_queue_size, workers=workers, use_multiprocessing=use_multiprocessing)[1]
     return acc
 
 
@@ -77,6 +51,9 @@ input_size = cf.image_size
 steps_per_epoch_train = cf.steps_per_epoch_train_ft
 steps_per_epoch_val = cf.steps_per_epoch_val_ft
 epochs = cf.epochs_ft
+workers = cf.workers
+use_multiprocessing = cf.use_multiprocessing
+max_queue_size = cf.max_queue_size
 
 model_path = cf.out_path_ft
 
@@ -186,7 +163,8 @@ for _ in range(experiment.observation_budget):
     value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs, train_generator=train_generator,
                            validation_generator=validation_generator, steps_per_epoch_val=steps_per_epoch_val,
                            tensor_board_callback=tensor_board_callback, momentum=momentum, nesterov=nesterov,
-                           model_path=model_path)
+                           model_path=model_path, workers=workers, use_multiprocessing=use_multiprocessing,
+                           max_queue_size=max_queue_size)
 
     conn.experiments(experiment.id).observations().create(
         suggestion=suggestion.id,

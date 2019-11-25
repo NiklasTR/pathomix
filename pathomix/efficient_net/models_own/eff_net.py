@@ -15,7 +15,10 @@ class EffNetFT:
                  tensor_board_callback=None,
                  momentum=0.0,
                  nesterov=True,
-                 model_path=None):
+                 model_path=None,
+                 workers=4,
+                 use_multiprocessing=False,
+                 max_queue_size=100):
         self.steps_per_epoch_train = steps_per_epoch_train
         self.epochs = epochs
         self.train_generator = train_generator
@@ -24,6 +27,9 @@ class EffNetFT:
         self.tensor_board_callback = tensor_board_callback
         self.momentum = momentum
         self.nesterov = nesterov
+        self.workers = workers
+        self.use_multiprocessing = use_multiprocessing
+        self.max_queue_size = max_queue_size
 
         if model_path:
             self.model = self.load_model(model_path)
@@ -63,6 +69,10 @@ class EffNetFT:
             epochs=self.epochs,
             validation_data=self.validation_generator,
             validation_steps=self.steps_per_epoch_val,
+            workers=self.workers,
+            use_multiprocessing=self.use_multiprocessing,
+            shuffle=True,
+            max_queue_size=self.max_queue_size,
             #callbacks=[self.tensor_board_callback]
             )
 
