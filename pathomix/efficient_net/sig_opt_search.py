@@ -71,6 +71,8 @@ batch_size_ft = cf.batch_size_ft
 train_folder = cf.train_folder
 test_folder = cf.test_folder
 random_seed = cf.random_seed
+width_shift_range = cf.width_shift_range
+input_size = cf.image_size
 
 steps_per_epoch_train = cf.steps_per_epoch_train_ft
 steps_per_epoch_val = cf.steps_per_epoch_val_ft
@@ -81,6 +83,7 @@ model_path = cf.out_path_ft
 momentum = cf.momentum
 nesterov = cf.nesterov
 
+'''
 # determine input size from model name. input size is fixed
 if efficient_net_type == 'B0':
     input_size = 224  # input size needed for network in pixels
@@ -88,13 +91,14 @@ if efficient_net_type == 'B0':
     height_shift_range = 0
     batch_size_ul = 512 # for p2
     #batch_size_ft = 64 # for p2
-    batch_size_ft = 512 # for p2
+    batch_size_ft = batch_size_ft 
 elif efficient_net_type == 'B3':
     input_size = 300
 elif efficient_net_type == 'B4':
     input_size = 380
     batch_size_ul = 32
     batch_size_ft = 8
+'''
 
 # insert token here
 conn = Connection(client_token="MBPBJXVLBQAJDOJNMRXQQXNCLQUOZFLYFMCZUWBJWKIVBKTC")
@@ -105,7 +109,7 @@ experiment_name = cf.experiment_name
 project_name = cf.project_name
 
 # define range for decay parameters for hyperparameter search
-lr_upper =  cf.lr_upper
+lr_upper = cf.lr_upper
 lr_lower = cf.lr_lower
 lower_decay = cf.lower_decay
 upper_decay = cf.upper_decay

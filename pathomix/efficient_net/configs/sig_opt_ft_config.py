@@ -17,9 +17,8 @@ out_path = './model_ultimate_with_proper_validation_{}'.format(efficient_net_typ
 '''
 # parameters for fine tuning training
 #epochs_ft = 40*8*4
-epochs_ft = 40*4
-#epochs_ft = 4
-steps_per_epoch_train_ft = 500
+epochs_ft = 4
+steps_per_epoch_train_ft = 1007
 #steps_per_epoch_train_ft = 5
 #steps_per_epoch_val_ft = 80
 steps_per_epoch_val_ft = 8
