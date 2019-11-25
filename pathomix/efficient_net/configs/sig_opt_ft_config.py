@@ -21,12 +21,12 @@ epochs_ft = 4
 #steps_per_epoch_train_ft = 504 # for batch size 128
 steps_per_epoch_train_ft = 1007 # for batch size 64
 #steps_per_epoch_train_ft = 5
-#steps_per_epoch_val_ft = 80
-steps_per_epoch_val_ft = 8
+steps_per_epoch_val_ft = 80
+#steps_per_epoch_val_ft = 8
 
 workers = 8
 use_multiprocessing = False
-max_queue_size = 100
+max_queue_size = 200
 
 out_path_ft = './model_ultimate_with_proper_validation_{}'.format(efficient_net_type)
 
