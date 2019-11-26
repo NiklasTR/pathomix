@@ -21,7 +21,7 @@ epochs_ft = 4
 #steps_per_epoch_train_ft = 504 # for batch size 128
 steps_per_epoch_train_ft = 1007 # for batch size 64
 #steps_per_epoch_train_ft = 5
-steps_per_epoch_val_ft = 80
+steps_per_epoch_val_ft = 264 # for batch_size 64
 #steps_per_epoch_val_ft = 8
 
 workers = 8
@@ -63,6 +63,10 @@ lr_upper = 0.1
 lower_decay = 0.000001 * lr_lower * batch_size_ft/256.
 upper_decay = 0.001 * lr_upper * batch_size_ft/256.
 
-observation_budget = 30
+observation_budget = 60
 experiment_name = 'Optimize FFPE MSI classification with efficient net'
 project_name = "pathomix"
+
+continue_experiment = True
+experiment_id = '135957'
+

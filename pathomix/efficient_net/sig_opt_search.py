@@ -83,6 +83,7 @@ conn = Connection(client_token="MBPBJXVLBQAJDOJNMRXQQXNCLQUOZFLYFMCZUWBJWKIVBKTC
 observation_budget = cf.observation_budget
 experiment_name = cf.experiment_name
 project_name = cf.project_name
+continue_experiment = cf.continue_experiment
 
 # define range for decay parameters for hyperparameter search
 lr_upper = cf.lr_upper
@@ -90,20 +91,21 @@ lr_lower = cf.lr_lower
 lower_decay = cf.lower_decay
 upper_decay = cf.upper_decay
 
-experiment = conn.experiments().create(
-    name=experiment_name,
-    # Define which parameters you would like to tune
-    parameters=[
-        dict(name='lr', type='double', bounds=dict(min=lr_lower, max=lr_upper)),
-        dict(name='decay', type='double', bounds=dict(min=lower_decay, max=upper_decay)),
-    ],
-    metrics=[dict(name='accuracy', objective='maximize')],
-    parallel_bandwidth=1,
-    # Define an Observation Budget for your experiment
-    observation_budget=observation_budget,
-    project=project_name,
-)
-print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
+if not continue_experiment:
+    experiment = conn.experiments().create(
+        name=experiment_name,
+        # Define which parameters you would like to tune
+        parameters=[
+            dict(name='lr', type='double', bounds=dict(min=lr_lower, max=lr_upper)),
+            dict(name='decay', type='double', bounds=dict(min=lower_decay, max=upper_decay)),
+        ],
+        metrics=[dict(name='accuracy', objective='maximize')],
+        parallel_bandwidth=1,
+        # Define an Observation Budget for your experiment
+        observation_budget=observation_budget,
+        project=project_name,
+    )
+    print("Created experiment: https://app.sigopt.com/experiment/" + experiment.id)
 
 #create data generators
 
@@ -155,8 +157,13 @@ value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train,
                        model_path=model_path)
 
 '''
-for _ in range(experiment.observation_budget):
-    suggestion = conn.experiments(experiment.id).suggestions().create()
+
+for _ in range(observation_budget):
+    if continue_experiment:
+        experiment_id = "135957"
+    else:
+        experiment_id = experiment.id
+    suggestion = conn.experiments(experiment_id).suggestions().create()
     assignments = suggestion.assignments
     print('current assignments: {}'.format(assignments))
     value = evaluate_model(assignments, steps_per_epoch_train=steps_per_epoch_train, epochs=epochs, train_generator=train_generator,
@@ -165,12 +172,12 @@ for _ in range(experiment.observation_budget):
                            model_path=model_path, workers=workers, use_multiprocessing=use_multiprocessing,
                            max_queue_size=max_queue_size)
 
-    conn.experiments(experiment.id).observations().create(
+    conn.experiments(experiment_id).observations().create(
         suggestion=suggestion.id,
         value=value
     )
 
-assignments = conn.experiments(experiment.id).best_assignments().fetch().data[0].assignments
+assignments = conn.experiments(experiment_id).best_assignments().fetch().data[0].assignments
 
 print('best assignments')
 print(assignments)
