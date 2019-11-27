@@ -21,6 +21,8 @@ num_processes = cf.num_processes
 
 num_generators_per_process = num_generate_train_distributions//num_processes
 
+out_file = cf.out_file
+
 
 
 # generate data that will represent our training data
@@ -38,4 +40,4 @@ _ = [p.join() for p in job]
 # create pandas data frame holding all results
 results_list = list(results)
 df = pd.DataFrame(results_list)
-#df.to_csv('.results/stage0.csv')
+df.to_csv(out_file)
