@@ -24,3 +24,5 @@ data/icgc/icgc-dataset-1573131324362/donor.tsv.gz
 venv_pathomix/
 .idea/
 notes/
+/pathomix/MC_simulation/venv_mc/
+/pathomix/efficient_net/.idea/
