@@ -37,6 +37,6 @@ identification_rate = 0.1
 evaluation_rate = 0.1
 
 # for multiprocessing
-num_processes = 4
+num_processes = 16
 
 out_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0.csv'
