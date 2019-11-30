@@ -87,7 +87,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                     if number_mutations==0: # is no muatoins are available fill dict and do not sample but continue with loop
                         result = OrderedDict()
                         result['theo_auc'] = theo_auc
-                        results['train_auc'] = np.NaN
+                        result['train_auc'] = np.NaN
                         #result['tn'] = np.NaN
                         #result['fp'] = np.NaN
                         #result['fn'] = np.NaN
