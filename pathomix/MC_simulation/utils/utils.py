@@ -88,10 +88,6 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                         result = OrderedDict()
                         result['theo_auc'] = theo_auc
                         result['train_auc'] = np.NaN
-                        #result['tn'] = np.NaN
-                        #result['fp'] = np.NaN
-                        #result['fn'] = np.NaN
-                        #result['tp'] = np.NaN
                         result['sample_size'] = sas
                         result['prevalence'] = prevalence
                         result['mu_normal'] = theo_mu_normal
@@ -100,6 +96,10 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                         result['std_mutation'] = theo_std_mutation
                         result['number_of_mutations'] = number_mutations
                         result['threshold_training'] = np.NaN
+                        result['tn'] = np.NaN
+                        result['fp'] = np.NaN
+                        result['fn'] = np.NaN
+                        result['tp'] = np.NaN
                         result['sens'] = np.NaN
                         result['spez'] = np.NaN
                         result['ppv'] = np.NaN
@@ -234,10 +234,10 @@ def summarize_preds(arr_neg, arr_pos, threshold, b_print=False):
     fnr = fn / (tp + fn)
 
     summary = OrderedDict()
-    #summary['tn'] = tn
-    #summary['fp'] = fp
-    #summary['fn'] = fn
-    #summary['tp'] = tp
+    summary['tn'] = tn
+    summary['fp'] = fp
+    summary['fn'] = fn
+    summary['tp'] = tp
     summary['sens'] = sens
     summary['spez'] = spez
     summary['ppv'] = ppv
