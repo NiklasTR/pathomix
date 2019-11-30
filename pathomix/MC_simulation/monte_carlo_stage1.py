@@ -1,6 +1,6 @@
 from importlib.machinery import SourceFileLoader
 from multiprocessing import Manager, Process
-import random
+import math
 
 import pandas as pd
 
@@ -19,7 +19,7 @@ sens_search = cf.sens_search
 
 num_processes = cf.num_processes
 
-num_generators_per_process = num_generate_train_distributions//num_processes
+num_generators_per_process = math.ceil(num_generate_train_distributions/num_processes)
 
 out_file = cf.out_file
 

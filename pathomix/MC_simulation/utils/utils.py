@@ -47,25 +47,22 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
         # training
         #
         print('n_generator {}'.format(n_generator))
+        # assumption: we get training data from pharma. The distribution below is a theoretical gt for n = infinity
+        # this step has to be performed to make some quality checks on the underlying distributions
         distributions_info = get_distributions_for_given_auc(auc_lower_bound, auc_upper_bound, num_training_patients,
                                                              num_training_patients, balanced=True)
-        normal = distributions_info['normal']
-        mutations = distributions_info['mutation']
-        gts = distributions_info['gts']
-        train_mu_normal = distributions_info['mu_normal']
-        train_mu_mutation = distributions_info['mu_mutation']
-        train_std_normal = distributions_info['std_normal']
-        train_std_mutation = distributions_info['std_mutation']
+        normal_theo = distributions_info['normal']
+        mutations_theo = distributions_info['mutation']
+        gts_theo = distributions_info['gts']
+        theo_mu_normal = distributions_info['mu_normal']
+        theo_mu_mutation = distributions_info['mu_mutation']
+        theo_std_normal = distributions_info['std_normal']
+        theo_std_mutation = distributions_info['std_mutation']
+
+        fpr_theo, tpr_theo, thresholds_theo = get_roc_from_sample(normal_theo, mutations_theo,
+                                                   gts_theo)  # TPR = sens, TNR = 1 - FPR = spez
+        theo_auc = metr.auc(fpr_theo, tpr_theo)
         # plot_distributions(normal, mutations)
-
-        # now define thresholds for given sensitivity
-        fpr, tpr, thresholds = get_roc_from_sample(normal, mutations, gts)
-        train_auc = metr.auc(fpr, tpr)
-        thres = {}
-
-        for t in sens_search:
-            idx = get_index_for_threshold(fpr, t)
-            thres[t] = thresholds[idx]  # loop over this dict in later monte carlo
 
         #
         # sampling on "test" data
@@ -74,6 +71,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
         # now define thresholds for given sensitivity
         for prevalence in prevalences:
             for sas in sample_sizes:
+
                 for dr in range(n_drawn_samples):
                     #
                     #
@@ -83,55 +81,80 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                              0.05: -1.8042589799105322,
                              0.1: -1.6215225019891808}
                     '''
-                    for threshold in thres:
-                        # print('sample size {}, draw {}, threshold {}'.format(sas, dr, threshold))
+                    # draw sample with sas patiente from theoretical distribution
+                    # number_normal_cases = sas - number_mutations
+                    number_mutations = poisson.rvs(mu=sas * prevalence)
+                    if number_mutations==0: # is no muatoins are available fill dict and do not sample but continue with loop
                         result = OrderedDict()
-                        result['auc_training'] = train_auc
-                        result['threshold_training'] = threshold
+                        result['theo_auc'] = theo_auc
+                        results['train_auc'] = np.NaN
+                        #result['tn'] = np.NaN
+                        #result['fp'] = np.NaN
+                        #result['fn'] = np.NaN
+                        #result['tp'] = np.NaN
                         result['sample_size'] = sas
                         result['prevalence'] = prevalence
-                        result['mu_normal'] = train_mu_normal
-                        result['mu_mutation'] = train_mu_mutation
-                        result['std_normal'] = train_std_normal
-                        result['std_mutation'] = train_std_mutation
-                        number_mutations = poisson.rvs(mu=sas * prevalence)
+                        result['mu_normal'] = theo_mu_normal
+                        result['mu_mutation'] = theo_mu_mutation
+                        result['std_normal'] = theo_std_normal
+                        result['std_mutation'] = theo_std_mutation
                         result['number_of_mutations'] = number_mutations
-                        # print("{} of {} patients have a mutation".format(number_mutations, sas))
-                        if number_mutations == 0:
-                            result['auc'] = 0
-                            result['tn'] = 0
-                            result['fp'] = 0
-                            result['fn'] = 0
-                            result['tp'] = 0
-                            result['sens'] = 0
-                            result['spez'] = 0
-                            result['ppv'] = 0
-                            result['npv'] = 0
-                            result['fnr'] = 0
-                        else:
-                            #number_normal_cases = sas - number_mutations
-                            sample_summary = sample_data(sas, number_mutations, mu_mutation=train_mu_mutation,
-                                                         mu_normal=train_mu_normal, std_mutation=train_std_mutation,
-                                                         std_normal=train_std_normal, balanced=False)
-                            normal = sample_summary['normal']
-                            mutation = sample_summary['mutation']
-                            gts = sample_summary['gts']
+                        result['threshold_training'] = np.NaN
+                        result['sens'] = np.NaN
+                        result['spez'] = np.NaN
+                        result['ppv'] = np.NaN
+                        result['npv'] = np.NaN
+                        result['fnr'] = np.NaN
+                    else:
 
-                            #fpr, tpr, thresholds = get_roc_from_sample(normal, mutation, gts)
-                            result['auc'] = get_auc(normal, mutation, gts, False)
+                        sample_summary = sample_data(sas, number_mutations, mu_mutation=theo_mu_mutation,
+                                                     mu_normal=theo_mu_normal, std_mutation=theo_std_mutation,
+                                                     std_normal=theo_std_normal, balanced=False)
+                        normal = sample_summary['normal']
+                        mutation = sample_summary['mutation']
+                        gts = sample_summary['gts']
+
+                        # now define thresholds for given sensitivity
+                        fpr, tpr, thresholds = get_roc_from_sample(normal, mutation,
+                                                                   gts)  # TPR = sens, TNR = 1 - FPR = spez
+                        train_auc = metr.auc(fpr, tpr)
+                        thres = {}
+
+                        for sens in sens_search:
+                            idx = get_index_for_threshold(tpr, sens)
+                            thres[sens] = thresholds[idx]  # loop over this dict in later monte carlo
+
+                        for t in thres:
+                            # print('sample size {}, draw {}, threshold {}'.format(sas, dr, threshold))
+                            result = OrderedDict()
+                            result['theo_auc'] = theo_auc
+                            result['train_auc'] = train_auc
+                            result['sample_size'] = sas
+                            result['prevalence'] = prevalence
+                            result['mu_normal'] = theo_mu_normal
+                            result['mu_mutation'] = theo_mu_mutation
+                            result['std_normal'] = theo_std_normal
+                            result['std_mutation'] = theo_std_mutation
+
+                            result['number_of_mutations'] = number_mutations
+
+                            result['threshold_training'] = t
                             # plot_distributions(normal, mutation)
-                            summary_train = summarize_preds(normal, mutation, threshold)
+                            # here we apply the thresholds fdetermined using only n patients. This threshold will now be
+                            # applied to the theoretical distribution and we will get how many FN, TP, ... patients
+                            # we would get in a testing scenario
+                            summary_train = summarize_preds(normal_theo, mutations_theo, t)
                             for k, v in summary_train.items():
                                 result[k] = v
-                        results.append(result)
+                            results.append(result)
     return results
 
 
-def get_index_for_threshold(fpr, sens):
-    t = 1 - fpr  # == sens
-    diff = abs(t - sens)
+def get_index_for_threshold(tpr, sens):
+    # tpr == sens  = 1- FNR (https://duckduckgo.com/?q=sensitivity&t=canonical)
+    diff = abs(tpr - sens)
     diff_reverse = diff[::-1]  # since fpr, tpr and threshold are right to left
-    return abs(np.argmin(diff_reverse) - len(fpr) + 1)  # subtract length of array to be in right order again
+    return abs(np.argmin(diff_reverse) - len(tpr) + 1)  # subtract length of array to be in right order again
 
 '''
 def pathomix_stage2_cost_workflow(pat_per_month, cost_pathomix_prescreening, cost_identification, identification_rate,
@@ -211,10 +234,10 @@ def summarize_preds(arr_neg, arr_pos, threshold, b_print=False):
     fnr = fn / (tp + fn)
 
     summary = OrderedDict()
-    summary['tn'] = tn
-    summary['fp'] = fp
-    summary['fn'] = fn
-    summary['tp'] = tp
+    #summary['tn'] = tn
+    #summary['fp'] = fp
+    #summary['fn'] = fn
+    #summary['tp'] = tp
     summary['sens'] = sens
     summary['spez'] = spez
     summary['ppv'] = ppv
