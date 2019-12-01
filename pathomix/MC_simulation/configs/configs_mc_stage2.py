@@ -9,6 +9,6 @@ price_immun_ckpt_therapy = [10*5,  # imaginary price
 
 ratio_of_patients_being_check = [0.25, 0.5, 0.6, 0.75, 0.9, 0.95, 0.99]
 
-load_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0_v2.csv'
+load_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0_v3.csv'
 
 write_file = '/home/ubuntu/bucket/pathomix/results/simulations/stage2.csv'

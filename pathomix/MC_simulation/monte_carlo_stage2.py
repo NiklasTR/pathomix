@@ -28,6 +28,7 @@ new_cols = ['baseline_revenue', 'ratio_of_patients_being_check', 'price_immun_ck
 #df_stage2 = pd.DataFrame([[np.NaN for _ in new_cols]], columns=new_cols)
 df_stage2 = pd.DataFrame()
 for cost_bm_c in costs_per_biomarker_checking:
+    print('biomarker cost {}'.format(cost_bm_c))
     for profit_px_s in profit_per_pathomix_screening:
         for price_ickpt_t in price_immun_ckpt_therapy:
             for ratio in ratio_of_patients_being_check:
