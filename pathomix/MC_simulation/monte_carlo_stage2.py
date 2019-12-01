@@ -1,6 +1,7 @@
 from importlib.machinery import SourceFileLoader
 from multiprocessing import Manager, Process
 import math
+import numpy as np
 
 import pandas as pd
 
@@ -15,6 +16,15 @@ profit_per_pathomix_screening = cf.profit_per_pathomix_screening
 price_immun_ckpt_therapy = cf.price_immun_ckpt_therapy
 
 ratio_of_patients_being_check = cf.ratio_of_patients_being_check
+costs_per_biomarker_checking = [50]
+costs_per_pathomix_screening = 5
+profit_per_pathomix_screening = [1]
+
+price_immun_ckpt_therapy = [10*5,  # imaginary price
+                           1.1 * 10**6,  # for base line nivolumab check https://onlinelibrary.wiley.com/doi/full/10.1002/cncr.31795 table2
+                           3 * 10**6]  # for nivolumab and Ipilimumab
+
+ratio_of_patients_being_check = [0.25, 1]
 
 
 load_file = cf.load_file
@@ -25,10 +35,10 @@ df = pd.read_csv(load_file)
 new_cols = ['baseline_revenue', 'ratio_of_patients_being_check', 'price_immun_ckpt_therapy', 'profit_per_pathomix_screening',
                                   'profit_per_pathomix_screening', 'costs_per_biomarker_checking', 'pathomix_revenue_all', 'pathomix_revenue_part',
                                   'patients_missed']
-df_stage2 = pd.DataFrame(columns=new_cols)
+#df_stage2 = pd.DataFrame([[np.NaN for _ in new_cols]], columns=new_cols)
+df_stage2 = pd.DataFrame()
 for cost_bm_c in costs_per_biomarker_checking:
     for profit_px_s in profit_per_pathomix_screening:
-        print('yeay')
         for price_ickpt_t in price_immun_ckpt_therapy:
             for ratio in ratio_of_patients_being_check:
                 df_temp = pd.DataFrame(columns=new_cols)
@@ -47,7 +57,13 @@ for cost_bm_c in costs_per_biomarker_checking:
 
                 # add patients missed
                 df_temp['patients_missed'] = (1 - df['sens']) * df['number_of_mutations']
+                #print(df_temp.iloc[1])
+                df_temp['diff_baseline_px_part'] = df_temp['baseline_revenue'] - df_temp['pathomix_revenue_part']
+                df_temp['diff_baseline_px_all'] = df_temp['baseline_revenue'] - df_temp['pathomix_revenue_all']
 
-                df_stage2.append(df_temp, ignore_index=True)
+                if len (df_stage2) == 0:
+                    df_stage2 = df_temp
+                else:
+                    df_stage2 = df_stage2.append(df_temp, ignore_index=False)
 
 df_stage2.to_csv(write_file)
