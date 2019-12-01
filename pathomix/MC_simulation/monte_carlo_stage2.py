@@ -16,16 +16,6 @@ profit_per_pathomix_screening = cf.profit_per_pathomix_screening
 price_immun_ckpt_therapy = cf.price_immun_ckpt_therapy
 
 ratio_of_patients_being_check = cf.ratio_of_patients_being_check
-costs_per_biomarker_checking = [50]
-costs_per_pathomix_screening = 5
-profit_per_pathomix_screening = [1]
-
-price_immun_ckpt_therapy = [10*5,  # imaginary price
-                           1.1 * 10**6,  # for base line nivolumab check https://onlinelibrary.wiley.com/doi/full/10.1002/cncr.31795 table2
-                           3 * 10**6]  # for nivolumab and Ipilimumab
-
-ratio_of_patients_being_check = [0.25, 1]
-
 
 load_file = cf.load_file
 write_file = cf.write_file
