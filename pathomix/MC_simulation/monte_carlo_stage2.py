@@ -18,7 +18,7 @@ ratio_of_patients_being_check = cf.ratio_of_patients_being_check
 
 
 load_file = cf.load_file
-out_file = cf.out_file
+write_file = cf.write_file
 
 df = pd.read_csv(load_file)
 
@@ -28,6 +28,7 @@ new_cols = ['baseline_revenue', 'ratio_of_patients_being_check', 'price_immun_ck
 df_stage2 = pd.DataFrame(columns=new_cols)
 for cost_bm_c in costs_per_biomarker_checking:
     for profit_px_s in profit_per_pathomix_screening:
+        print('yeay')
         for price_ickpt_t in price_immun_ckpt_therapy:
             for ratio in ratio_of_patients_being_check:
                 df_temp = pd.DataFrame(columns=new_cols)
@@ -49,4 +50,4 @@ for cost_bm_c in costs_per_biomarker_checking:
 
                 df_stage2.append(df_temp, ignore_index=True)
 
-df_stage2.to_csv(out_file)
+df_stage2.to_csv(write_file)
