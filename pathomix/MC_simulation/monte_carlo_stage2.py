@@ -41,7 +41,7 @@ for cost_bm_c in costs_per_biomarker_checking:
 
                 # add pathomix revenue
                 df_temp['pathomix_revenue_all'] = -df['sample_size'] * costs_per_pathomix_screening - \
-                                                     (df['sens']* df['number_of_mutations'] + df['tnr'] * (df['sample_size'] - df['mutations'])) * cost_bm_c + \
+                                                     (df['sens']* df['number_of_mutations'] + df['spec'] * (df['sample_size'] - df['mutations'])) * cost_bm_c + \
                                                      (df['sens'] * df['number_of_mutations'] * price_ickpt_t)
                 df_temp['pathomix_revenue_part'] = df_temp['pathomix_revenue_all'] / ratio
 
