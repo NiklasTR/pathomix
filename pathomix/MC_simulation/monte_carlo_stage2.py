@@ -1,0 +1,52 @@
+from importlib.machinery import SourceFileLoader
+from multiprocessing import Manager, Process
+import math
+
+import pandas as pd
+
+from utils.utils import *
+
+cf = SourceFileLoader('cf', 'configs/configs_mc_stage2.py').load_module()
+
+costs_per_biomarker_checking = cf.costs_per_biomarker_checking
+costs_per_pathomix_screening = cf.costs_per_pathomix_screening
+profit_per_pathomix_screening = cf.profit_per_pathomix_screening
+
+price_immun_ckpt_therapy = cf.price_immun_ckpt_therapy
+
+ratio_of_patients_being_check = cf.ratio_of_patients_being_check
+
+
+load_file = cf.load_file
+out_file = cf.out_file
+
+df = pd.read_csv(load_file)
+
+new_cols = ['baseline_revenue', 'ratio_of_patients_being_check', 'price_immun_ckpt_therapy', 'profit_per_pathomix_screening',
+                                  'profit_per_pathomix_screening', 'costs_per_biomarker_checking', 'pathomix_revenue_all', 'pathomix_revenue_part',
+                                  'patients_missed']
+df_stage2 = pd.DataFrame(columns=new_cols)
+for cost_bm_c in costs_per_biomarker_checking:
+    for profit_px_s in profit_per_pathomix_screening:
+        for price_ickpt_t in price_immun_ckpt_therapy:
+            for ratio in ratio_of_patients_being_check:
+                df_temp = pd.DataFrame(columns=new_cols)
+                # add base line costs
+                df_temp['baseline_revenue'] = (-df['sample_size'] * cost_bm_c + df['number_of_mutations'] * price_ickpt_t) / ratio
+                df_temp['ratio_of_patients_being_check'] = ratio
+                df_temp['price_immun_ckpt_therapy'] = price_ickpt_t
+                df_temp['profit_per_pathomix_screening'] = profit_px_s
+                df_temp['costs_per_biomarker_checking'] = cost_bm_c
+
+                # add pathomix revenue
+                df_temp['pathomix_revenue_all'] = -df['sample_size'] * costs_per_pathomix_screening - \
+                                                     (df['tpr']* df['number_of_mutations'] + df['tnr'] * (df['sample_size'] - df['mutations'])) * cost_bm_c + \
+                                                     (df['tpr'] * df['number_of_mutations'] * price_ickpt_t)
+                df_temp['pathomix_revenue_part'] = df_temp['pathomix_revenue_all'] / ratio
+
+                # add patients missed
+                df_temp['patients_missed'] = (1 - df['tpr']) * df['number_of_mutations']
+
+                df_stage2.append(df_temp, ignore_index=True)
+
+df_stage2.to_csv(out_file)

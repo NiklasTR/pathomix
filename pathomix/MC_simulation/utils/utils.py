@@ -226,11 +226,11 @@ def summarize_preds(arr_neg, arr_pos, threshold, b_print=False):
     if not (tp==0 and fp ==0):
         ppv = tp / (tp + fp)
     else:
-        ppv = 0
+        ppv = np.NaN
     if not (tn==0 and fn==0):
         npv = tn / (tn + fn)
     else:
-        npv = 0
+        npv = np.NaN
     fnr = fn / (tp + fn)
 
     summary = OrderedDict()
