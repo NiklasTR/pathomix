@@ -7,6 +7,8 @@ import seaborn as sns
 import sklearn.metrics as metr
 from scipy.stats import poisson
 import scipy as sp
+import pandas as pd
+import uuid
 
 '''
 def calculate_pathomix_stage2_per_month(prevalence, pat_per_month, mu_mutation, mu_normal, std_mutation, std_normal,
@@ -37,12 +39,58 @@ def calculate_pathomix_stage2_per_month(prevalence, pat_per_month, mu_mutation, 
 '''
 
 
+def make_cost_calculations(results, df, costs_per_biomarker_checking, costs_per_pathomix_screening,
+                           profit_per_pathomix_screening,
+                           price_immun_ckpt_therapy, ratio_of_patients_being_check):
+    new_cols = ['baseline_revenue', 'ratio_of_patients_being_check', 'price_immun_ckpt_therapy',
+                'profit_per_pathomix_screening',
+                'profit_per_pathomix_screening', 'costs_per_biomarker_checking', 'pathomix_revenue_all',
+                'pathomix_revenue_part',
+                'patients_missed']
+    # df_stage2 = pd.DataFrame([[np.NaN for _ in new_cols]], columns=new_cols)
+    df_stage2 = pd.DataFrame()
+    for cost_bm_c in costs_per_biomarker_checking:
+        print('biomarker cost {}'.format(cost_bm_c))
+        for profit_px_s in profit_per_pathomix_screening:
+            for price_ickpt_t in price_immun_ckpt_therapy:
+                for ratio in ratio_of_patients_being_check:
+                    df_temp = pd.DataFrame(columns=new_cols)
+                    # add base line costs
+                    df_temp['baseline_revenue'] = (-df['sample_size'] * cost_bm_c + df[
+                        'number_of_mutations'] * price_ickpt_t) / ratio
+                    df_temp['ratio_of_patients_being_check'] = ratio
+                    df_temp['price_immun_ckpt_therapy'] = price_ickpt_t
+                    df_temp['profit_per_pathomix_screening'] = profit_px_s
+                    df_temp['costs_per_biomarker_checking'] = cost_bm_c
+
+                    # add pathomix revenue
+                    df_temp['pathomix_revenue_all'] = -df['sample_size'] * costs_per_pathomix_screening - \
+                                                      (df['sens'] * df['number_of_mutations'] + df['spez'] * (
+                                                                  df['sample_size'] - df[
+                                                              'number_of_mutations'])) * cost_bm_c + \
+                                                      (df['sens'] * df['number_of_mutations'] * price_ickpt_t)
+                    df_temp['pathomix_revenue_part'] = df_temp['pathomix_revenue_all'] / ratio
+
+                    # add patients missed
+                    df_temp['patients_missed'] = (1 - df['sens']) * df['number_of_mutations']
+                    # print(df_temp.iloc[1])
+                    df_temp['diff_baseline_px_part'] = df_temp['baseline_revenue'] - df_temp['pathomix_revenue_part']
+                    df_temp['diff_baseline_px_all'] = df_temp['baseline_revenue'] - df_temp['pathomix_revenue_all']
+
+                    if len(df_stage2) == 0:
+                        df_stage2 = df_temp
+                    else:
+                        df_stage2 = df_stage2.append(df_temp, ignore_index=False)
+
+    return results
+
 
 def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, auc_upper_bound,
                              num_training_patients, prevalences, sample_sizes, n_drawn_samples, sens_search, rdn_seed):
 
     sp.random.seed()
     for n_generator in range(num_generate_train_distributions):
+        uuid_generator = uuid.uuid4().hex
         #
         # training
         #
@@ -73,6 +121,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
             for sas in sample_sizes:
 
                 for dr in range(n_drawn_samples):
+                    uuid_sample = uuid.uuid4().hex
                     #
                     #
                     #
@@ -86,6 +135,8 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                     number_mutations = poisson.rvs(mu=sas * prevalence)
                     if number_mutations==0: # is no muatoins are available fill dict and do not sample but continue with loop
                         result = OrderedDict()
+                        result['uuid_gen'] = uuid_generator
+                        result['uuid_sample'] = uuid_sample
                         result['theo_auc'] = theo_auc
                         result['train_auc'] = np.NaN
                         result['sample_size'] = sas
@@ -124,9 +175,11 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                             idx = get_index_for_threshold(tpr, sens)
                             thres[sens] = thresholds[idx]  # loop over this dict in later monte carlo
 
-                        for t in thres:
+                        for t in thres.items():
                             # print('sample size {}, draw {}, threshold {}'.format(sas, dr, threshold))
                             result = OrderedDict()
+                            result['uuid_gen'] = uuid_generator
+                            result['uuid_sample'] = uuid_sample
                             result['theo_auc'] = theo_auc
                             result['train_auc'] = train_auc
                             result['sample_size'] = sas
@@ -140,7 +193,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
 
                             result['threshold_training'] = t
                             # plot_distributions(normal, mutation)
-                            # here we apply the thresholds fdetermined using only n patients. This threshold will now be
+                            # here we apply the thresholds determined using only n patients. This threshold will now be
                             # applied to the theoretical distribution and we will get how many FN, TP, ... patients
                             # we would get in a testing scenario
                             summary_train = summarize_preds(normal_theo, mutations_theo, t)

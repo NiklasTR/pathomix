@@ -6,7 +6,7 @@ import pandas as pd
 
 from utils.utils import *
 
-cf = SourceFileLoader('cf', 'configs/configs_mc_stage0.py').load_module()
+cf = SourceFileLoader('cf', 'configs/configs_mc.py').load_module()
 
 num_generate_train_distributions = cf.num_generate_train_distributions
 auc_lower_bound = cf.auc_lower_bound
