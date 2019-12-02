@@ -175,7 +175,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                             idx = get_index_for_threshold(tpr, sens)
                             thres[sens] = thresholds[idx]  # loop over this dict in later monte carlo
 
-                        for t in thres.items():
+                        for k, t in thres.items():
                             # print('sample size {}, draw {}, threshold {}'.format(sas, dr, threshold))
                             result = OrderedDict()
                             result['uuid_gen'] = uuid_generator
