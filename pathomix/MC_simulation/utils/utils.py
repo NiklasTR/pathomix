@@ -191,7 +191,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
 
                             result['number_of_mutations'] = number_mutations
 
-                            result['threshold_training'] = t
+                            result['sens_training'] = k
                             # plot_distributions(normal, mutation)
                             # here we apply the thresholds determined using only n patients. This threshold will now be
                             # applied to the theoretical distribution and we will get how many FN, TP, ... patients
