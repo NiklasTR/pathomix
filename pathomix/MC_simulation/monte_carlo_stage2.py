@@ -28,24 +28,26 @@ df = df.iloc[0:100000]
 
 idxs = df.index
 
+number_sub_list = len(idxs)//num_processes
 # split list if idx into equally long sublists
-split_list = lambda lst, sz: [lst[i:i + sz] for i in range(0, len(lst), sz)]
+split_list = lambda lst, sz: [list(lst[i:i + sz]) for i in range(0, len(lst)-1, sz)]
 
-sub_idx = split_list(idxs, num_processes)
+sub_idx = split_list(idxs, number_sub_list)
 
 # generate data that will represent our training data
 manager = Manager()
 results = manager.list()
 
 # correct this
-job = [Process(target=make_cost_calculations, args=(results, num_generators_per_process, auc_lower_bound, auc_upper_bound,
-                                             num_training_patients, prevalences, sample_sizes, n_drawn_samples, sens_search,
-                                             rdn_seed)) for rdn_seed in range(num_processes)]
+job = [Process(target=make_cost_calculations, args=(results, df.loc[sl], costs_per_biomarker_checking, costs_per_pathomix_screening,
+                           profit_per_pathomix_screening,
+                           price_immun_ckpt_therapy, ratio_of_patients_being_check)) for sl in sub_idx]
 
 
 _ = [p.start() for p in job]
 _ = [p.join() for p in job]
 
+results = list(results)
 result_df = results[0]
 
 for df_part in results[1:]:

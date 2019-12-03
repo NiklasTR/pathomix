@@ -57,6 +57,8 @@ def make_cost_calculations(results, df, costs_per_biomarker_checking, costs_per_
                 for ratio in ratio_of_patients_being_check:
                     df_temp = pd.DataFrame(columns=new_cols)
                     # add base line costs
+                    df_temp['uuid_generator'] = df['uuid_generator']
+                    df_temp['uuid_sample'] = df['uuid_sample']
                     df_temp['baseline_revenue'] = (-df['sample_size'] * cost_bm_c + df[
                         'number_of_mutations'] * price_ickpt_t) / ratio
                     df_temp['ratio_of_patients_being_check'] = ratio
@@ -66,7 +68,7 @@ def make_cost_calculations(results, df, costs_per_biomarker_checking, costs_per_
 
                     # add pathomix revenue
                     df_temp['pathomix_revenue_all'] = -df['sample_size'] * costs_per_pathomix_screening - \
-                                                      (df['sens'] * df['number_of_mutations'] + df['spez'] * (
+                                                      (df['sens'] * df['number_of_mutations'] + df['spec'] * (
                                                                   df['sample_size'] - df[
                                                               'number_of_mutations'])) * cost_bm_c + \
                                                       (df['sens'] * df['number_of_mutations'] * price_ickpt_t)
@@ -82,6 +84,8 @@ def make_cost_calculations(results, df, costs_per_biomarker_checking, costs_per_
                         df_stage2 = df_temp
                     else:
                         df_stage2 = df_stage2.append(df_temp, ignore_index=False)
+
+    results.append(df_stage2)
 
     return results
 
@@ -153,7 +157,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                         #result['fn'] = np.NaN
                         #result['tp'] = np.NaN
                         result['sens'] = np.NaN
-                        result['spez'] = np.NaN
+                        result['spec'] = np.NaN
                         result['ppv'] = np.NaN
                         result['npv'] = np.NaN
                         result['fnr'] = np.NaN
@@ -217,7 +221,8 @@ def get_index_for_threshold_spec(fpr, spec):
     # tpr == sens  = 1- FNR (https://duckduckgo.com/?q=sensitivity&t=canonical)
     diff = abs(spec_is - spec)
     diff_reverse = diff[::-1]  # since fpr, tpr and threshold are right to left
-    return abs(np.argmin(diff_reverse) - len(fpr) + 1)  # subtract length of array to be in right order again
+    #return abs(np.argmin(diff_reverse) - len(fpr) + 1)  # subtract length of array to be in right order again
+    return abs(np.argmin(diff))  # subtract length of array to be in right order again
 
 
 '''
@@ -286,7 +291,7 @@ def summarize_preds(arr_neg, arr_pos, threshold, b_print=False):
 
     tn, fp, fn, tp = metr.confusion_matrix(gts, preds).ravel()
     sens = tp / (tp + fn)
-    spez = tn / (tn + fp)
+    spec = tn / (tn + fp)
     if not (tp==0 and fp ==0):
         ppv = tp / (tp + fp)
     else:
@@ -303,7 +308,7 @@ def summarize_preds(arr_neg, arr_pos, threshold, b_print=False):
     #summary['fn'] = fn
     #summary['tp'] = tp
     summary['sens'] = sens
-    summary['spez'] = spez
+    summary['spec'] = spec
     summary['ppv'] = ppv
     summary['npv'] = npv
     summary['fnr'] = fnr
@@ -314,7 +319,7 @@ def summarize_preds(arr_neg, arr_pos, threshold, b_print=False):
         print('fn: {}'.format(fn))
         print('tp: {}'.format(tp))
         print('sens: {}'.format(sens))
-        print('spez: {}'.format(spez))
+        print('spec: {}'.format(spec))
         print('ppv: {}'.format(ppv))
         print('npv: {}'.format(npv))
         print('fnr: {}'.format(fnr))
