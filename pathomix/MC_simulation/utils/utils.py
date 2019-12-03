@@ -10,6 +10,7 @@ import scipy as sp
 import pandas as pd
 import uuid
 
+
 '''
 def calculate_pathomix_stage2_per_month(prevalence, pat_per_month, mu_mutation, mu_normal, std_mutation, std_normal,
                                         balanced=False):
@@ -171,9 +172,10 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
                         train_auc = metr.auc(fpr, tpr)
                         thres = {}
 
-                        for sens in sens_search:
-                            idx = get_index_for_threshold(tpr, sens)
-                            thres[sens] = thresholds[idx]  # loop over this dict in later monte carlo
+                        for s in sens_search:
+                            #idx = get_index_for_threshold_sens(tpr, s)
+                            idx = get_index_for_threshold_spec(fpr, s)
+                            thres[s] = thresholds[idx]  # loop over this dict in later monte carlo
 
                         for k, t in thres.items():
                             # print('sample size {}, draw {}, threshold {}'.format(sas, dr, threshold))
@@ -191,7 +193,7 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
 
                             result['number_of_mutations'] = number_mutations
 
-                            result['sens_training'] = k
+                            result['spec_training'] = k
                             # plot_distributions(normal, mutation)
                             # here we apply the thresholds determined using only n patients. This threshold will now be
                             # applied to the theoretical distribution and we will get how many FN, TP, ... patients
@@ -203,11 +205,20 @@ def simulate_stage0(results, num_generate_train_distributions, auc_lower_bound, 
     return results
 
 
-def get_index_for_threshold(tpr, sens):
+def get_index_for_threshold_sens(tpr, sens):
     # tpr == sens  = 1- FNR (https://duckduckgo.com/?q=sensitivity&t=canonical)
     diff = abs(tpr - sens)
     diff_reverse = diff[::-1]  # since fpr, tpr and threshold are right to left
     return abs(np.argmin(diff_reverse) - len(tpr) + 1)  # subtract length of array to be in right order again
+
+
+def get_index_for_threshold_spec(fpr, spec):
+    spec_is = 1- fpr
+    # tpr == sens  = 1- FNR (https://duckduckgo.com/?q=sensitivity&t=canonical)
+    diff = abs(spec_is - spec)
+    diff_reverse = diff[::-1]  # since fpr, tpr and threshold are right to left
+    return abs(np.argmin(diff_reverse) - len(fpr) + 1)  # subtract length of array to be in right order again
+
 
 '''
 def pathomix_stage2_cost_workflow(pat_per_month, cost_pathomix_prescreening, cost_identification, identification_rate,

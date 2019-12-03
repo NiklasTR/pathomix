@@ -15,7 +15,8 @@ num_training_patients = cf.num_training_patients
 n_drawn_samples = cf.n_drawn_samples
 prevalences = cf.prevalences
 sample_sizes = cf.sample_sizes
-sens_search = cf.sens_search
+#sens_search = cf.sens_search
+sens_search = cf.spec_search
 
 num_processes = cf.num_processes
 
