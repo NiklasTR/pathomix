@@ -38,7 +38,7 @@ evaluation_rate = 0.1
 # for multiprocessing
 num_processes = 16
 # outfile for stage 1
-out_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0_spec099_v3.csv'
+out_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0_spec099_v0.csv'
 
 #
 # for stage 2
