@@ -17,7 +17,7 @@ sample_sizes = [50, 100, 200, 500, 1000]
 #wt_training_pats = num_training_patients * (1-prevalence)
 #mut_training_pats = num_training_patients * prevalence
 
-n_drawn_samples = 100 # how often samples will be drawn for a given training distribution
+n_drawn_samples = 10 # how often samples will be drawn for a given training distribution
 
 
 # parameters at test time
@@ -38,7 +38,7 @@ evaluation_rate = 0.1
 # for multiprocessing
 num_processes = 16
 # outfile for stage 1
-out_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0_v3.csv'
+out_file ='/home/ubuntu/bucket/pathomix/results/simulations/stage0_spec099_v3.csv'
 
 #
 # for stage 2
