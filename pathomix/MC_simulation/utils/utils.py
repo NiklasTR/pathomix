@@ -221,8 +221,8 @@ def get_index_for_threshold_spec(fpr, spec):
     # tpr == sens  = 1- FNR (https://duckduckgo.com/?q=sensitivity&t=canonical)
     diff = abs(spec_is - spec)
     diff_reverse = diff[::-1]  # since fpr, tpr and threshold are right to left
-    #return abs(np.argmin(diff_reverse) - len(fpr) + 1)  # subtract length of array to be in right order again
-    return abs(np.argmin(diff))  # subtract length of array to be in right order again
+    return abs(np.argmin(diff_reverse) - len(fpr) + 1)  # subtract length of array to be in right order again
+    #return abs(np.argmin(diff))  # subtract length of array to be in right order again
 
 
 '''
