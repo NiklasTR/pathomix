@@ -31,7 +31,8 @@ from tools.util import Time
 
 
 #BASE_DIR = os.path.join(".", "data")
-BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
+#BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
+BASE_DIR = "/home/ubuntu/bucket/pathomix/WSI_test_upload"
 # BASE_DIR = os.path.join(os.sep, "Volumes", "BigData", "TUPAC")
 TRAIN_PREFIX = "TCGA"
 SRC_TRAIN_DIR = os.path.join(BASE_DIR, "WSI")
@@ -39,7 +40,7 @@ SRC_TRAIN_EXT = "svs"
 DEST_TRAIN_SUFFIX = "small-"  # Example: "train-"
 DEST_TRAIN_EXT = "jpg"
 #SCALE_FACTOR = 32
-SCALE_FACTOR = 8
+SCALE_FACTOR = 4
 DEST_TRAIN_DIR = os.path.join(BASE_DIR, "training_" + DEST_TRAIN_EXT)
 THUMBNAIL_SIZE = 300
 THUMBNAIL_EXT = "jpg"
