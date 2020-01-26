@@ -32,7 +32,7 @@ from tools.util import Time
 
 #BASE_DIR = os.path.join(".", "data")
 #BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
-BASE_DIR = "/home/ubuntu/bucket/pathomix/WSI_test_upload"
+BASE_DIR = "/home/ubuntu/local_WSI_test"
 # BASE_DIR = os.path.join(os.sep, "Volumes", "BigData", "TUPAC")
 TRAIN_PREFIX = "TCGA"
 SRC_TRAIN_DIR = os.path.join(BASE_DIR, "WSI")
