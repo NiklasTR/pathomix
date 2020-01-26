@@ -15,9 +15,9 @@ sum_tiles = tiles.summary_and_tiles(0, display=False, save_summary=True, save_da
 '''
 def create_tiles_from_WSI():
     slide.multiprocess_training_slides_to_images()
-    filter.multiprocess_apply_filters_to_images(save=True, display=False, html=False, image_num_list=[0])
+    filter.multiprocess_apply_filters_to_images(save=True, display=False, html=False, image_num_list=[0,1,2,3,4,5,6,7,8,9])
     sum_files = tiles.multiprocess_filtered_images_to_tiles(display=False, save_summary=True, save_data=True,
-                                                            save_top_tiles=False, html=True, image_num_list=[0],
+                                                            save_top_tiles=False, html=True, image_num_list=[0,1,2,3,4,5,6,7,8,9],
                                                             save_above_threshold=True, threshold=TISSUE_THRESHOLD)
 
 if __name__ == '__main__':
