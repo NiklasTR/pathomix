@@ -35,7 +35,7 @@ from tools import filter_utils
 NUM_PROCESSES = multiprocessing.cpu_count() - 2
 
 #BASE_DIR = os.path.join(".", "data")
-BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
+BASE_DIR = os.environ['PATHOMIX_DATA']
 #BASE_DIR = "/home/ubuntu/local_WSI_test"
 # BASE_DIR = os.path.join(os.sep, "Volumes", "BigData", "TUPAC")
 TRAIN_PREFIX = "TCGA"
@@ -73,9 +73,9 @@ COL_TILE_SIZE_SCALED = 224
 # size of tiles on the original image
 ROW_TILE_SIZE = ROW_TILE_SIZE_SCALED * SCALE_FACTOR
 COL_TILE_SIZE = COL_TILE_SIZE_SCALED * SCALE_FACTOR
-ROW_NUM_SPLIT = 4
+ROW_NUM_SPLIT = 8
 # make sure all cores are used for processing
-COL_NUM_SPLIT = NUM_PROCESSES * 2
+COL_NUM_SPLIT = NUM_PROCESSES
 
 TILE_DATA_DIR = os.path.join(BASE_DIR, "tile_data")
 TILE_DATA_SUFFIX = "tile_data"
@@ -823,7 +823,7 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   p = multiprocessing.Pool(num_processes-2)
 
   p.map(split_subslide_into_tile,
-        zip([slide_number] * num_indices, indices, [my_slide] * num_indices, [level] * num_indices,
+        zip([slide_number] * num_indices, indices, [level] * num_indices,
             [large_w] * num_indices, [large_h] * num_indices, [new_w] * num_indices, [new_h] * num_indices,
             [small_tile_in_tile] * num_indices))
 
@@ -835,7 +835,10 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   # split image
 
 def split_subslide_into_tile(args):
-  slide_number, ind,  my_slide, level, large_w, large_h, new_w, new_h, small_tile_in_tile, = args
+  slide_number, ind,  level, large_w, large_h, new_w, new_h, small_tile_in_tile, = args
+
+  slide_filepath = get_training_slide_path(slide_number)
+  my_slide = open_slide(slide_filepath)
 
   row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
 
