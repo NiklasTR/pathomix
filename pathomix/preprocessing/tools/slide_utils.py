@@ -32,6 +32,8 @@ from tools import tiles
 from tools.util import Time
 from tools import filter_utils
 
+NUM_PROCESSES = multiprocessing.cpu_count() - 2
+
 #BASE_DIR = os.path.join(".", "data")
 BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
 #BASE_DIR = "/home/ubuntu/local_WSI_test"
@@ -71,8 +73,9 @@ COL_TILE_SIZE_SCALED = 224
 # size of tiles on the original image
 ROW_TILE_SIZE = ROW_TILE_SIZE_SCALED * SCALE_FACTOR
 COL_TILE_SIZE = COL_TILE_SIZE_SCALED * SCALE_FACTOR
-ROW_NUM_SPLIT = 8
-COL_NUM_SPLIT = 8
+ROW_NUM_SPLIT = 4
+# make sure all cores are used for processing
+COL_NUM_SPLIT = NUM_PROCESSES * 2
 
 TILE_DATA_DIR = os.path.join(BASE_DIR, "tile_data")
 TILE_DATA_SUFFIX = "tile_data"
@@ -83,6 +86,7 @@ TOP_TILES_THUMBNAIL_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_thumbnail_
 TOP_TILES_ON_ORIGINAL_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_on_original_" + DEST_TRAIN_EXT)
 TOP_TILES_ON_ORIGINAL_THUMBNAIL_DIR = os.path.join(BASE_DIR,
                                                    TOP_TILES_SUFFIX + "_on_original_thumbnail_" + THUMBNAIL_EXT)
+TISSUE_THRESHOLD = 90
 
 TILE_DIR = os.path.join(BASE_DIR, "tiles_" + DEST_TRAIN_EXT)
 TILE_SUFFIX = "tile"
@@ -788,7 +792,7 @@ def slide_to_scaled_pil_image(slide_number):
   return img, large_w, large_h, new_w, new_h
 
 
-def slide_to_scaled_tiles(slide_number):
+def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   """
   Convert a WSI training slide to a scaled-down PIL image.
 
@@ -812,51 +816,67 @@ def slide_to_scaled_tiles(slide_number):
 
   indices = tiles.get_tile_indices(my_slide.level_dimensions[level][0], my_slide.level_dimensions[level][1],
                                   large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED, cutoff=True)
+  num_indices = len(indices)
   t = Time()
-  # split image
-  for ind in indices:
-    row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
 
-    #split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
-    #                                      (large_w_split//int(my_slide.level_downsamples[level]),
-    #                                       large_h_split//int(my_slide.level_downsamples[level])))
-    split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
-                                       (my_slide.level_dimensions[level][0] // COL_NUM_SPLIT,
-                                        my_slide.level_dimensions[level][1] // ROW_NUM_SPLIT))
-    split_patch = split_patch.convert("RGB")
-    split_patch = split_patch.resize((new_w, new_h), PIL.Image.BILINEAR)
-    np_img = util.pil_to_np_rgb(split_patch)
+  num_processes = multiprocessing.cpu_count()
+  p = multiprocessing.Pool(num_processes-2)
 
-    filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=True, display=False,
-                                                   thumbnail_only=True)
+  p.map(split_subslide_into_tile,
+        zip([slide_number] * num_indices, indices, [my_slide] * num_indices, [level] * num_indices,
+            [large_w] * num_indices, [large_h] * num_indices, [new_w] * num_indices, [new_h] * num_indices,
+            [small_tile_in_tile] * num_indices))
 
-    tile_sum = tiles.score_tiles(slide_number, filt_np_img, np_img, (large_w, large_h, new_w, new_h), small_tile_in_tile=True,
-                                 offset=[row_idx_start, col_idx_start])
-
-    threshold=90
-    counter = 0
-    for tile in tile_sum.tiles_by_tissue_percentage():
-      print(tile.tissue_percentage)
-      if tile.tissue_percentage > threshold:
-        counter += 1
-        tile.save_scaled_tile()
-      else:
-        break
-    print("{} tiles saved".format(counter))
-    '''
-    img_path = get_training_image_path_split(slide_number, large_w, large_h, new_w, new_h, tile_row_idx, tile_col_idx)
-    print("Saving image to: " + img_path)
-    if not os.path.exists(DEST_TRAIN_DIR):
-      os.makedirs(DEST_TRAIN_DIR)
-    img.save(img_path)
-    '''
-    thumbnail_path = get_training_thumbnail_path_split(slide_number, large_w, large_h, new_w, new_h,
-                                                 tile_row_idx, tile_col_idx)
-    save_thumbnail(split_patch, THUMBNAIL_SIZE, thumbnail_path)
-    del tile_sum, filt_np_img, np_img, split_patch
-    gc.collect()
+  p.close()
+  p.join()
 
   t.elapsed_display()
+  return None
+  # split image
+
+def split_subslide_into_tile(args):
+  slide_number, ind,  my_slide, level, large_w, large_h, new_w, new_h, small_tile_in_tile, = args
+
+  row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
+
+  #split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
+  #                                      (large_w_split//int(my_slide.level_downsamples[level]),
+  #                                       large_h_split//int(my_slide.level_downsamples[level])))
+  split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
+                                     (my_slide.level_dimensions[level][0] // COL_NUM_SPLIT,
+                                      my_slide.level_dimensions[level][1] // ROW_NUM_SPLIT))
+  split_patch = split_patch.convert("RGB")
+  split_patch = split_patch.resize((new_w, new_h), PIL.Image.BILINEAR)
+  np_img = util.pil_to_np_rgb(split_patch)
+
+  filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=True, display=False,
+                                                 thumbnail_only=True)
+
+  tile_sum = tiles.score_tiles(slide_number, filt_np_img, np_img, (large_w, large_h, new_w, new_h), small_tile_in_tile=small_tile_in_tile,
+                               offset=[row_idx_start, col_idx_start])
+
+  counter = 0
+  for tile in tile_sum.tiles_by_tissue_percentage():
+    print(tile.tissue_percentage)
+    if tile.tissue_percentage > TISSUE_THRESHOLD:
+      counter += 1
+      tile.save_scaled_tile()
+    else:
+      break
+  print("{} tiles saved".format(counter))
+  '''
+  img_path = get_training_image_path_split(slide_number, large_w, large_h, new_w, new_h, tile_row_idx, tile_col_idx)
+  print("Saving image to: " + img_path)
+  if not os.path.exists(DEST_TRAIN_DIR):
+    os.makedirs(DEST_TRAIN_DIR)
+  img.save(img_path)
+  '''
+  thumbnail_path = get_training_thumbnail_path_split(slide_number, large_w, large_h, new_w, new_h,
+                                               tile_row_idx, tile_col_idx)
+  save_thumbnail(split_patch, THUMBNAIL_SIZE, thumbnail_path)
+  del tile_sum, filt_np_img, np_img, split_patch
+  gc.collect()
+
   return None
 
 
