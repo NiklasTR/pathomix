@@ -28,8 +28,8 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 from enum import Enum
 from tools import util
-from tools import filter
-from tools import slide
+from tools import filter_utils
+from tools import slide_utils
 from tools.util import Time
 
 TISSUE_HIGH_THRESH = 95
@@ -37,8 +37,8 @@ TISSUE_LOW_THRESH = 10
 
 #ROW_TILE_SIZE = 1024
 #COL_TILE_SIZE = 1024
-ROW_TILE_SIZE = 512
-COL_TILE_SIZE = 512
+ROW_TILE_SIZE = slide_utils.ROW_TILE_SIZE
+COL_TILE_SIZE = slide_utils.COL_TILE_SIZE
 NUM_TOP_TILES = 50
 
 DISPLAY_TILE_SUMMARY_LABELS = False
@@ -73,7 +73,7 @@ HSV_PURPLE = 270
 HSV_PINK = 330
 
 
-def get_num_tiles(rows, cols, row_tile_size, col_tile_size):
+def get_num_tiles(rows, cols, row_tile_size, col_tile_size, cutoff=False):
   """
   Obtain the number of vertical and horizontal tiles that an image can be divided into given a row tile size and
   a column tile size.
@@ -88,12 +88,16 @@ def get_num_tiles(rows, cols, row_tile_size, col_tile_size):
     Tuple consisting of the number of vertical tiles and the number of horizontal tiles that the image can be divided
     into given the row tile size and the column tile size.
   """
-  num_row_tiles = math.ceil(rows / row_tile_size)
-  num_col_tiles = math.ceil(cols / col_tile_size)
+  if cutoff:
+    num_row_tiles = math.floor(rows / row_tile_size)
+    num_col_tiles = math.floor(cols / col_tile_size)
+  else:
+    num_row_tiles = math.ceil(rows / row_tile_size)
+    num_col_tiles = math.ceil(cols / col_tile_size)
   return num_row_tiles, num_col_tiles
 
 
-def get_tile_indices(rows, cols, row_tile_size, col_tile_size):
+def get_tile_indices(rows, cols, row_tile_size, col_tile_size, multiples=None, cutoff=False):
   """
   Obtain a list of tile coordinates (starting row, ending row, starting column, ending column, row number, column number).
 
@@ -102,20 +106,37 @@ def get_tile_indices(rows, cols, row_tile_size, col_tile_size):
     cols: Number of columns.
     row_tile_size: Number of pixels in a tile row.
     col_tile_size: Number of pixels in a tile column.
+    :param multiples: Default None, if true, all tiles will be multiple of "multiples". This ensures that no gabs between
+    the tiles will occur
 
   Returns:
     List of tuples representing tile coordinates consisting of starting row, ending row,
     starting column, ending column, row number, column number.
   """
   indices = list()
-  num_row_tiles, num_col_tiles = get_num_tiles(rows, cols, row_tile_size, col_tile_size)
+  num_row_tiles, num_col_tiles = get_num_tiles(rows, cols, row_tile_size, col_tile_size, cutoff=cutoff)
   for r in range(0, num_row_tiles):
     start_r = r * row_tile_size
-    end_r = ((r + 1) * row_tile_size) if (r < num_row_tiles - 1) else rows
+    if multiples:
+      if (r < num_row_tiles - 1):
+        end_r = ((r + 1) * row_tile_size)
+      else:
+        end_r =start_r + (rows - start_r) // multiples * multiples
+    else:
+      end_r = ((r + 1) * row_tile_size) if (r < num_row_tiles - 1) else rows
     for c in range(0, num_col_tiles):
       start_c = c * col_tile_size
-      end_c = ((c + 1) * col_tile_size) if (c < num_col_tiles - 1) else cols
+      if multiples:
+        if (c < num_col_tiles - 1):
+          end_c = ((c + 1) * col_tile_size)
+        else:
+          end_c = start_c + (cols - start_c) // multiples * multiples
+      else:
+        end_c = ((c + 1) * col_tile_size) if (c < num_col_tiles - 1) else cols
       indices.append((start_r, end_r, start_c, end_c, r + 1, c + 1))
+  if multiples:
+    print("last {} pixels dropped along rows to match multiples of {}".format(rows - end_r, multiples))
+    print("last {} pixels dropped along columns to match multiples of {}".format(cols - end_c, multiples))
   return indices
 
 
@@ -167,8 +188,8 @@ def generate_tile_summaries(tile_sum, np_img, display=True, save_summary=False):
   summary = create_summary_pil_img(np_img, z, row_tile_size, col_tile_size, num_row_tiles, num_col_tiles)
   draw = ImageDraw.Draw(summary)
 
-  original_img_path = slide.get_training_image_path(slide_num)
-  np_orig = slide.open_image_np(original_img_path)
+  original_img_path = slide_utils.get_training_image_path(slide_num)
+  np_orig = slide_utils.open_image_np(original_img_path)
   summary_orig = create_summary_pil_img(np_orig, z, row_tile_size, col_tile_size, num_row_tiles, num_col_tiles)
   draw_orig = ImageDraw.Draw(summary_orig)
 
@@ -228,8 +249,8 @@ def generate_top_tile_summaries(tile_sum, np_img, display=True, save_summary=Fal
   summary = create_summary_pil_img(np_img, z, row_tile_size, col_tile_size, num_row_tiles, num_col_tiles)
   draw = ImageDraw.Draw(summary)
 
-  original_img_path = slide.get_training_image_path(slide_num)
-  np_orig = slide.open_image_np(original_img_path)
+  original_img_path = slide_utils.get_training_image_path(slide_num)
+  np_orig = slide_utils.open_image_np(original_img_path)
   summary_orig = create_summary_pil_img(np_orig, z, row_tile_size, col_tile_size, num_row_tiles, num_col_tiles)
   draw_orig = ImageDraw.Draw(summary_orig)
 
@@ -430,13 +451,13 @@ def save_tile_summary_image(pil_img, slide_num):
     slide_num: The slide number.
   """
   t = Time()
-  filepath = slide.get_tile_summary_image_path(slide_num)
+  filepath = slide_utils.get_tile_summary_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum", str(t.elapsed()), filepath))
 
   t = Time()
-  thumbnail_filepath = slide.get_tile_summary_thumbnail_path(slide_num)
-  slide.save_thumbnail(pil_img, slide.THUMBNAIL_SIZE, thumbnail_filepath)
+  thumbnail_filepath = slide_utils.get_tile_summary_thumbnail_path(slide_num)
+  slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum Thumb", str(t.elapsed()), thumbnail_filepath))
 
 
@@ -449,13 +470,13 @@ def save_top_tiles_image(pil_img, slide_num):
     slide_num: The slide number.
   """
   t = Time()
-  filepath = slide.get_top_tiles_image_path(slide_num)
+  filepath = slide_utils.get_top_tiles_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Tiles Image", str(t.elapsed()), filepath))
 
   t = Time()
-  thumbnail_filepath = slide.get_top_tiles_thumbnail_path(slide_num)
-  slide.save_thumbnail(pil_img, slide.THUMBNAIL_SIZE, thumbnail_filepath)
+  thumbnail_filepath = slide_utils.get_top_tiles_thumbnail_path(slide_num)
+  slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Tiles Thumb", str(t.elapsed()), thumbnail_filepath))
 
 
@@ -468,13 +489,13 @@ def save_tile_summary_on_original_image(pil_img, slide_num):
     slide_num: The slide number.
   """
   t = Time()
-  filepath = slide.get_tile_summary_on_original_image_path(slide_num)
+  filepath = slide_utils.get_tile_summary_on_original_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum Orig", str(t.elapsed()), filepath))
 
   t = Time()
-  thumbnail_filepath = slide.get_tile_summary_on_original_thumbnail_path(slide_num)
-  slide.save_thumbnail(pil_img, slide.THUMBNAIL_SIZE, thumbnail_filepath)
+  thumbnail_filepath = slide_utils.get_tile_summary_on_original_thumbnail_path(slide_num)
+  slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print(
     "%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum Orig T", str(t.elapsed()), thumbnail_filepath))
 
@@ -488,13 +509,13 @@ def save_top_tiles_on_original_image(pil_img, slide_num):
     slide_num: The slide number.
   """
   t = Time()
-  filepath = slide.get_top_tiles_on_original_image_path(slide_num)
+  filepath = slide_utils.get_top_tiles_on_original_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Orig", str(t.elapsed()), filepath))
 
   t = Time()
-  thumbnail_filepath = slide.get_top_tiles_on_original_thumbnail_path(slide_num)
-  slide.save_thumbnail(pil_img, slide.THUMBNAIL_SIZE, thumbnail_filepath)
+  thumbnail_filepath = slide_utils.get_top_tiles_on_original_thumbnail_path(slide_num)
+  slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print(
     "%-20s | Time: %-14s  Name: %s" % ("Save Top Orig Thumb", str(t.elapsed()), thumbnail_filepath))
 
@@ -502,7 +523,7 @@ def save_top_tiles_on_original_image(pil_img, slide_num):
 def summary_and_tiles(slide_num, display=True, save_summary=False, save_data=True, save_top_tiles=True,
                       save_above_threshold=False, threshold=50):
   """
-  Generate tile summary and top tiles for slide.
+  Generate tile summary and top tiles for slide_utils.
 
   Args:
     slide_num: The slide number.
@@ -514,8 +535,8 @@ def summary_and_tiles(slide_num, display=True, save_summary=False, save_data=Tru
     threshold: Threshold for tissue_percentage. Percentages above this threshold will be saved.
 
   """
-  img_path = slide.get_filter_image_result(slide_num)
-  np_img = slide.open_image_np(img_path)
+  img_path = slide_utils.get_filter_image_result(slide_num)
+  np_img = slide_utils.open_image_np(img_path)
 
   tile_sum = score_tiles(slide_num, np_img)
   if save_data:
@@ -528,9 +549,10 @@ def summary_and_tiles(slide_num, display=True, save_summary=False, save_data=Tru
   if save_above_threshold:
     counter = 0
     for tile in tile_sum.tiles_by_tissue_percentage():
+      print(tile.tissue_percentage)
       if tile.tissue_percentage > threshold:
         counter += 1
-        tile.save_tile()
+        tile.save_scaled_tile()
       else:
         break
     print("{} tiles saved".format(counter))
@@ -560,7 +582,7 @@ def save_tile_data(tile_summary):
       t.s_and_v_factor, t.quantity_factor, t.score)
     csv += line
 
-  data_path = slide.get_tile_data_path(tile_summary.slide_num)
+  data_path = slide_utils.get_tile_data_path(tile_summary.slide_num)
   csv_file = open(data_path, "w")
   csv_file.write(csv)
   csv_file.close()
@@ -579,8 +601,8 @@ def tile_to_pil_tile(tile):
     Tile as a PIL image.
   """
   t = tile
-  slide_filepath = slide.get_training_slide_path(t.slide_num)
-  s = slide.open_slide(slide_filepath)
+  slide_filepath = slide_utils.get_training_slide_path(t.slide_num)
+  s = slide_utils.open_slide(slide_filepath)
 
   x, y = t.o_c_s, t.o_r_s
   w, h = t.o_c_e - t.o_c_s, t.o_r_e - t.o_r_s
@@ -605,7 +627,7 @@ def tile_to_np_tile(tile):
   return np_img
 
 
-def save_display_tile(tile, save=True, display=False):
+def save_display_tile(tile, save=True, display=False, save_scaled=False):
   """
   Save and/or display a tile image.
 
@@ -614,14 +636,21 @@ def save_display_tile(tile, save=True, display=False):
     save: If True, save tile image.
     display: If True, dispaly tile image.
   """
-  tile_pil_img = tile_to_pil_tile(tile)
+  if not save_scaled:
+    tile_pil_img = tile_to_pil_tile(tile)
 
   if save:
     t = Time()
-    img_path = slide.get_tile_image_path(tile)
+    img_path = slide_utils.get_tile_image_path(tile)
     dir = os.path.dirname(img_path)
     if not os.path.exists(dir):
       os.makedirs(dir)
+    if save_scaled:
+      np_tile = tile.get_np_scaled_tile()
+      tile_pil_img = util.np_to_pil(np_tile)
+
+    else:
+      tile_pil_img = tile_to_pil_tile(tile)
     tile_pil_img.save(img_path)
     print("%-20s | Time: %-14s  Name: %s" % ("Save Tile", str(t.elapsed()), img_path))
 
@@ -629,13 +658,15 @@ def save_display_tile(tile, save=True, display=False):
     tile_pil_img.show()
 
 
-def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=False):
+def score_tiles(slide_num, np_img=None, np_img_raw=None, dimensions=None, small_tile_in_tile=False, offset=[0,0]):
   """
   Score all tiles for a slide and return the results in a TileSummary object.
 
   Args:
     slide_num: The slide number.
     np_img: Optional image as a NumPy array.
+    np_img_raw: Optional images as NumPy array, however not the filtered image but the original one (scaled). This is
+    needed to save not only the masked tile but also the orginal tile in tile_summary
     dimensions: Optional tuple consisting of (original width, original height, new width, new height). Used for dynamic
       tile retrieval.
     small_tile_in_tile: If True, include the small NumPy image in the Tile objects.
@@ -644,16 +675,18 @@ def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=Fals
     TileSummary object which includes a list of Tile objects containing information about each tile.
   """
   if dimensions is None:
-    img_path = slide.get_filter_image_result(slide_num)
-    o_w, o_h, w, h = slide.parse_dimensions_from_image_filename(img_path)
+    img_path = slide_utils.get_filter_image_result(slide_num)
+    o_w, o_h, w, h = slide_utils.parse_dimensions_from_image_filename(img_path)
   else:
     o_w, o_h, w, h = dimensions
 
   if np_img is None:
-    np_img = slide.open_image_np(img_path)
+    np_img = slide_utils.open_image_np(img_path)
 
-  row_tile_size = round(ROW_TILE_SIZE / slide.SCALE_FACTOR)  # use round?
-  col_tile_size = round(COL_TILE_SIZE / slide.SCALE_FACTOR)  # use round?
+  row_tile_size = round(ROW_TILE_SIZE / slide_utils.SCALE_FACTOR)  # use round?
+  col_tile_size = round(COL_TILE_SIZE / slide_utils.SCALE_FACTOR)  # use round?
+  #row_tile_size = ROW_TILE_SIZE
+  #col_tile_size = COL_TILE_SIZE
 
   num_row_tiles, num_col_tiles = get_num_tiles(h, w, row_tile_size, col_tile_size)
 
@@ -666,7 +699,7 @@ def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=Fals
                          scaled_h=h,
                          scaled_tile_w=col_tile_size,
                          scaled_tile_h=row_tile_size,
-                         tissue_percentage=filter.tissue_percent(np_img),
+                         tissue_percentage=filter_utils.tissue_percent(np_img),
                          num_col_tiles=num_col_tiles,
                          num_row_tiles=num_row_tiles)
 
@@ -679,8 +712,13 @@ def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=Fals
   for t in tile_indices:
     count += 1  # tile_num
     r_s, r_e, c_s, c_e, r, c = t
+    # adjust rows and colums index to absolute position
+    r += offset[0] // ROW_TILE_SIZE
+    c += offset[1] // COL_TILE_SIZE
     np_tile = np_img[r_s:r_e, c_s:c_e]
-    t_p = filter.tissue_percent(np_tile)
+    if np_img_raw is not None:
+      np_tile_raw = np_img_raw[r_s:r_e, c_s:c_e]
+    t_p = filter_utils.tissue_percent(np_tile)
     amount = tissue_quantity(t_p)
     if amount == TissueQuantity.HIGH:
       high += 1
@@ -690,8 +728,15 @@ def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=Fals
       low += 1
     elif amount == TissueQuantity.NONE:
       none += 1
-    o_c_s, o_r_s = slide.small_to_large_mapping((c_s, r_s), (o_w, o_h))
-    o_c_e, o_r_e = slide.small_to_large_mapping((c_e, r_e), (o_w, o_h))
+
+
+    o_c_s, o_r_s = slide_utils.small_to_large_mapping((c_s, r_s), (o_w, o_h))
+    o_c_e, o_r_e = slide_utils.small_to_large_mapping((c_e, r_e), (o_w, o_h))
+
+    o_c_s += offset[1]
+    o_r_s += offset[0]
+    o_c_e += offset[1]
+    o_r_e += offset[0]
 
     # pixel adjustment in case tile dimension too large (for example, 1025 instead of 1024)
     if (o_c_e - o_c_s) > COL_TILE_SIZE:
@@ -699,10 +744,11 @@ def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=Fals
     if (o_r_e - o_r_s) > ROW_TILE_SIZE:
       o_r_e -= 1
 
-    score, color_factor, s_and_v_factor, quantity_factor = score_tile(np_tile, t_p, slide_num, r, c)
+    score, color_factor, s_and_v_factor, quantity_factor = score_tile(np_tile, t_p)
 
     np_scaled_tile = np_tile if small_tile_in_tile else None
-    tile = Tile(tile_sum, slide_num, np_scaled_tile, count, r, c, r_s, r_e, c_s, c_e, o_r_s, o_r_e, o_c_s,
+    np_scaled_tile_raw = np_tile_raw if small_tile_in_tile and np_img_raw is not None else None
+    tile = Tile(tile_sum, slide_num, np_scaled_tile, np_scaled_tile_raw, count, r, c, r_s, r_e, c_s, c_e, o_r_s, o_r_e, o_c_s,
                 o_c_e, t_p, color_factor, s_and_v_factor, quantity_factor, score)
     tile_sum.tiles.append(tile)
 
@@ -721,16 +767,13 @@ def score_tiles(slide_num, np_img=None, dimensions=None, small_tile_in_tile=Fals
   return tile_sum
 
 
-def score_tile(np_tile, tissue_percent, slide_num, row, col):
+def score_tile(np_tile, tissue_percent):
   """
   Score tile based on tissue percentage, color factor, saturation/value factor, and tissue quantity factor.
 
   Args:
     np_tile: Tile as NumPy array.
     tissue_percent: The percentage of the tile judged to be tissue.
-    slide_num: Slide number.
-    row: Tile row.
-    col: Tile column.
 
   Returns tuple consisting of score, color factor, saturation/value factor, and tissue quantity factor.
   """
@@ -851,7 +894,7 @@ def singleprocess_filtered_images_to_tiles(display=False, save_summary=True, sav
     image_num_list, tile_summaries_dict = image_list_to_tiles(image_num_list, display, save_summary, save_data,
                                                               save_top_tiles)
   else:
-    num_training_slides = slide.get_num_training_slides()
+    num_training_slides = slide_utils.get_num_training_slides()
     image_num_list, tile_summaries_dict = image_range_to_tiles(1, num_training_slides, display, save_summary, save_data,
                                                                save_top_tiles)
 
@@ -877,8 +920,8 @@ def multiprocess_filtered_images_to_tiles(display=False, save_summary=True, save
   timer = Time()
   print("Generating tile summaries (multiprocess)\n")
 
-  if save_summary and not os.path.exists(slide.TILE_SUMMARY_DIR):
-    os.makedirs(slide.TILE_SUMMARY_DIR)
+  if save_summary and not os.path.exists(slide_utils.TILE_SUMMARY_DIR):
+    os.makedirs(slide_utils.TILE_SUMMARY_DIR)
 
   # how many processes to use
   num_processes = multiprocessing.cpu_count()
@@ -887,7 +930,7 @@ def multiprocess_filtered_images_to_tiles(display=False, save_summary=True, save
   if image_num_list is not None:
     num_train_images = len(image_num_list)
   else:
-    num_train_images = slide.get_num_training_slides()
+    num_train_images = slide_utils.get_num_training_slides()
   if num_processes > num_train_images:
     num_processes = num_train_images
   images_per_process = num_train_images / num_processes
@@ -947,18 +990,18 @@ def image_row(slide_num, tile_summary, data_link):
   Returns:
     HTML table row for viewing a tiled image.
   """
-  orig_img = slide.get_training_image_path(slide_num)
-  orig_thumb = slide.get_training_thumbnail_path(slide_num)
-  filt_img = slide.get_filter_image_result(slide_num)
-  filt_thumb = slide.get_filter_thumbnail_result(slide_num)
-  sum_img = slide.get_tile_summary_image_path(slide_num)
-  sum_thumb = slide.get_tile_summary_thumbnail_path(slide_num)
-  osum_img = slide.get_tile_summary_on_original_image_path(slide_num)
-  osum_thumb = slide.get_tile_summary_on_original_thumbnail_path(slide_num)
-  top_img = slide.get_top_tiles_image_path(slide_num)
-  top_thumb = slide.get_top_tiles_thumbnail_path(slide_num)
-  otop_img = slide.get_top_tiles_on_original_image_path(slide_num)
-  otop_thumb = slide.get_top_tiles_on_original_thumbnail_path(slide_num)
+  orig_img = slide_utils.get_training_image_path(slide_num)
+  orig_thumb = slide_utils.get_training_thumbnail_path(slide_num)
+  filt_img = slide_utils.get_filter_image_result(slide_num)
+  filt_thumb = slide_utils.get_filter_thumbnail_result(slide_num)
+  sum_img = slide_utils.get_tile_summary_image_path(slide_num)
+  sum_thumb = slide_utils.get_tile_summary_thumbnail_path(slide_num)
+  osum_img = slide_utils.get_tile_summary_on_original_image_path(slide_num)
+  osum_thumb = slide_utils.get_tile_summary_on_original_thumbnail_path(slide_num)
+  top_img = slide_utils.get_top_tiles_image_path(slide_num)
+  top_thumb = slide_utils.get_top_tiles_thumbnail_path(slide_num)
+  otop_img = slide_utils.get_top_tiles_on_original_image_path(slide_num)
+  otop_thumb = slide_utils.get_top_tiles_on_original_thumbnail_path(slide_num)
   html = "    <tr>\n" + \
          "      <td style=\"vertical-align: top\">\n" + \
          "        <a target=\"_blank\" href=\"%s\">S%03d Original<br/>\n" % (orig_img, slide_num) + \
@@ -986,7 +1029,7 @@ def image_row(slide_num, tile_summary, data_link):
   html += "      <td style=\"vertical-align: top\">\n"
   if data_link:
     html += "        <div style=\"white-space: nowrap;\">S%03d Tile Summary\n" % slide_num + \
-            "        (<a target=\"_blank\" href=\"%s\">Data</a>)</div>\n" % slide.get_tile_data_path(slide_num)
+            "        (<a target=\"_blank\" href=\"%s\">Data</a>)</div>\n" % slide_utils.get_tile_data_path(slide_num)
   else:
     html += "        <div style=\"white-space: nowrap;\">S%03d Tile Summary</div>\n" % slide_num
 
@@ -1032,7 +1075,7 @@ def image_row(slide_num, tile_summary, data_link):
       if tile_num <= num_tiles:
         t = top_tiles[tile_num - 1]
         label = "R%03d C%03d %0.4f (#%02d)" % (t.r, t.c, t.score, t.tile_num)
-        tile_img_path = slide.get_tile_image_path(t)
+        tile_img_path = slide_utils.get_tile_image_path(t)
         html += "<a target=\"_blank\" href=\"%s\">%s</a>" % (tile_img_path, label)
       else:
         html += "&nbsp;"
@@ -1057,22 +1100,22 @@ def generate_tiled_html_result(slide_nums, tile_summaries_dict, data_link):
     data_link: If True, add link to tile data csv file.
   """
   slide_nums = sorted(slide_nums)
-  if not slide.TILE_SUMMARY_PAGINATE:
+  if not slide_utils.TILE_SUMMARY_PAGINATE:
     html = ""
-    html += filter.html_header("Tiles")
+    html += filter_utils.html_header("Tiles")
 
     html += "  <table>\n"
     for slide_num in slide_nums:
       html += image_row(slide_num, data_link)
     html += "  </table>\n"
 
-    html += filter.html_footer()
-    text_file = open(os.path.join(slide.TILE_SUMMARY_HTML_DIR, "tiles.html"), "w")
+    html += filter_utils.html_footer()
+    text_file = open(os.path.join(slide_utils.TILE_SUMMARY_HTML_DIR, "tiles.html"), "w")
     text_file.write(html)
     text_file.close()
   else:
     total_len = len(slide_nums)
-    page_size = slide.TILE_SUMMARY_PAGINATION_SIZE
+    page_size = slide_utils.TILE_SUMMARY_PAGINATION_SIZE
     num_pages = math.ceil(total_len / page_size)
     for page_num in range(1, num_pages + 1):
       start_index = (page_num - 1) * page_size
@@ -1080,7 +1123,7 @@ def generate_tiled_html_result(slide_nums, tile_summaries_dict, data_link):
       page_slide_nums = slide_nums[start_index:end_index]
 
       html = ""
-      html += filter.html_header("Tiles, Page %d" % page_num)
+      html += filter_utils.html_header("Tiles, Page %d" % page_num)
 
       html += "  <div style=\"font-size: 20px\">"
       if page_num > 1:
@@ -1099,11 +1142,11 @@ def generate_tiled_html_result(slide_nums, tile_summaries_dict, data_link):
         html += image_row(slide_num, tile_summary, data_link)
       html += "  </table>\n"
 
-      html += filter.html_footer()
+      html += filter_utils.html_footer()
       if page_num == 1:
-        text_file = open(os.path.join(slide.TILE_SUMMARY_HTML_DIR, "tiles.html"), "w")
+        text_file = open(os.path.join(slide_utils.TILE_SUMMARY_HTML_DIR, "tiles.html"), "w")
       else:
-        text_file = open(os.path.join(slide.TILE_SUMMARY_HTML_DIR, "tiles-%d.html" % page_num), "w")
+        text_file = open(os.path.join(slide_utils.TILE_SUMMARY_HTML_DIR, "tiles-%d.html" % page_num), "w")
       text_file.write(html)
       text_file.close()
 
@@ -1273,16 +1316,16 @@ def display_image_with_hsv_hue_histogram(np_rgb, text=None, scale_up=False):
   Args:
     np_rgb: RGB image tile as a NumPy array
     text: Optional text to display above image
-    scale_up: If True, scale up image to display by slide.SCALE_FACTOR
+    scale_up: If True, scale up image to display by slide_utils.SCALE_FACTOR
   """
-  hsv = filter.filter_rgb_to_hsv(np_rgb)
-  h = filter.filter_hsv_to_h(hsv)
+  hsv = filter_utils.filter_rgb_to_hsv(np_rgb)
+  h = filter_utils.filter_hsv_to_h(hsv)
   np_hist = np_hsv_hue_histogram(h)
   hist_r, hist_c, _ = np_hist.shape
 
   if scale_up:
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=1)
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=0)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=1)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=0)
 
   img_r, img_c, img_ch = np_rgb.shape
   if text is not None:
@@ -1314,11 +1357,11 @@ def display_image(np_rgb, text=None, scale_up=False):
   Args:
     np_rgb: RGB image tile as a NumPy array
     text: Optional text to display above image
-    scale_up: If True, scale up image to display by slide.SCALE_FACTOR
+    scale_up: If True, scale up image to display by slide_utils.SCALE_FACTOR
   """
   if scale_up:
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=1)
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=0)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=1)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=0)
 
   img_r, img_c, img_ch = np_rgb.shape
   if text is not None:
@@ -1343,19 +1386,19 @@ def display_image_with_hsv_histograms(np_rgb, text=None, scale_up=False):
   Args:
     np_rgb: RGB image tile as a NumPy array
     text: Optional text to display above image
-    scale_up: If True, scale up image to display by slide.SCALE_FACTOR
+    scale_up: If True, scale up image to display by slide_utils.SCALE_FACTOR
   """
-  hsv = filter.filter_rgb_to_hsv(np_rgb)
-  np_h = np_hsv_hue_histogram(filter.filter_hsv_to_h(hsv))
-  np_s = np_hsv_saturation_histogram(filter.filter_hsv_to_s(hsv))
-  np_v = np_hsv_value_histogram(filter.filter_hsv_to_v(hsv))
+  hsv = filter_utils.filter_rgb_to_hsv(np_rgb)
+  np_h = np_hsv_hue_histogram(filter_utils.filter_hsv_to_h(hsv))
+  np_s = np_hsv_saturation_histogram(filter_utils.filter_hsv_to_s(hsv))
+  np_v = np_hsv_value_histogram(filter_utils.filter_hsv_to_v(hsv))
   h_r, h_c, _ = np_h.shape
   s_r, s_c, _ = np_s.shape
   v_r, v_c, _ = np_v.shape
 
   if scale_up:
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=1)
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=0)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=1)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=0)
 
   img_r, img_c, img_ch = np_rgb.shape
   if text is not None:
@@ -1395,7 +1438,7 @@ def display_image_with_rgb_histograms(np_rgb, text=None, scale_up=False):
   Args:
     np_rgb: RGB image tile as a NumPy array
     text: Optional text to display above image
-    scale_up: If True, scale up image to display by slide.SCALE_FACTOR
+    scale_up: If True, scale up image to display by slide_utils.SCALE_FACTOR
   """
   np_r = np_rgb_r_histogram(np_rgb)
   np_g = np_rgb_g_histogram(np_rgb)
@@ -1405,8 +1448,8 @@ def display_image_with_rgb_histograms(np_rgb, text=None, scale_up=False):
   b_r, b_c, _ = np_b.shape
 
   if scale_up:
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=1)
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=0)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=1)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=0)
 
   img_r, img_c, img_ch = np_rgb.shape
   if text is not None:
@@ -1534,15 +1577,15 @@ def display_image_with_rgb_and_hsv_histograms(np_rgb, text=None, scale_up=False)
   Args:
     np_rgb: RGB image tile as a NumPy array
     text: Optional text to display above image
-    scale_up: If True, scale up image to display by slide.SCALE_FACTOR
+    scale_up: If True, scale up image to display by slide_utils.SCALE_FACTOR
   """
-  hsv = filter.filter_rgb_to_hsv(np_rgb)
+  hsv = filter_utils.filter_rgb_to_hsv(np_rgb)
   np_r = np_rgb_r_histogram(np_rgb)
   np_g = np_rgb_g_histogram(np_rgb)
   np_b = np_rgb_b_histogram(np_rgb)
-  np_h = np_hsv_hue_histogram(filter.filter_hsv_to_h(hsv))
-  np_s = np_hsv_saturation_histogram(filter.filter_hsv_to_s(hsv))
-  np_v = np_hsv_value_histogram(filter.filter_hsv_to_v(hsv))
+  np_h = np_hsv_hue_histogram(filter_utils.filter_hsv_to_h(hsv))
+  np_s = np_hsv_saturation_histogram(filter_utils.filter_hsv_to_s(hsv))
+  np_v = np_hsv_value_histogram(filter_utils.filter_hsv_to_v(hsv))
 
   r_r, r_c, _ = np_r.shape
   g_r, g_c, _ = np_g.shape
@@ -1552,8 +1595,8 @@ def display_image_with_rgb_and_hsv_histograms(np_rgb, text=None, scale_up=False)
   v_r, v_c, _ = np_v.shape
 
   if scale_up:
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=1)
-    np_rgb = np.repeat(np_rgb, slide.SCALE_FACTOR, axis=0)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=1)
+    np_rgb = np.repeat(np_rgb, slide_utils.SCALE_FACTOR, axis=0)
 
   img_r, img_c, img_ch = np_rgb.shape
   if text is not None:
@@ -1603,8 +1646,8 @@ def rgb_to_hues(rgb):
   Returns:
     1-dimensional array of hue values in degrees
   """
-  hsv = filter.filter_rgb_to_hsv(rgb, display_np_info=False)
-  h = filter.filter_hsv_to_h(hsv, display_np_info=False)
+  hsv = filter_utils.filter_rgb_to_hsv(rgb, display_np_info=False)
+  h = filter_utils.filter_hsv_to_h(hsv, display_np_info=False)
   return h
 
 
@@ -1623,9 +1666,9 @@ def hsv_saturation_and_value_factor(rgb):
     Saturation and value factor, where 1 is no effect and less than 1 means the standard deviations of saturation and
     value are relatively small.
   """
-  hsv = filter.filter_rgb_to_hsv(rgb, display_np_info=False)
-  s = filter.filter_hsv_to_s(hsv)
-  v = filter.filter_hsv_to_v(hsv)
+  hsv = filter_utils.filter_rgb_to_hsv(rgb, display_np_info=False)
+  s = filter_utils.filter_hsv_to_s(hsv)
+  v = filter_utils.filter_hsv_to_v(hsv)
   s_std = np.std(s)
   v_std = np.std(v)
   if s_std < 0.05 and v_std < 0.05:
@@ -1761,7 +1804,7 @@ class TileSummary:
   orig_h = None
   orig_tile_w = None
   orig_tile_h = None
-  scale_factor = slide.SCALE_FACTOR
+  scale_factor = slide_utils.SCALE_FACTOR
   scaled_w = None
   scaled_h = None
   scaled_tile_w = None
@@ -1871,11 +1914,12 @@ class Tile:
   Class for information about a tile.
   """
 
-  def __init__(self, tile_summary, slide_num, np_scaled_tile, tile_num, r, c, r_s, r_e, c_s, c_e, o_r_s, o_r_e, o_c_s,
+  def __init__(self, tile_summary, slide_num, np_scaled_tile, np_scaled_tile_raw, tile_num, r, c, r_s, r_e, c_s, c_e, o_r_s, o_r_e, o_c_s,
                o_c_e, t_p, color_factor, s_and_v_factor, quantity_factor, score):
     self.tile_summary = tile_summary
     self.slide_num = slide_num
     self.np_scaled_tile = np_scaled_tile
+    self.np_scaled_tile_raw = np_scaled_tile_raw
     self.tile_num = tile_num
     self.r = r
     self.c = c
@@ -1913,16 +1957,19 @@ class Tile:
     return tile_to_np_tile(self)
 
   def save_tile(self):
-    save_display_tile(self, save=True, display=False)
+    save_display_tile(self, save=True, display=False, save_scaled=False)
+
+  def save_scaled_tile(self):
+    save_display_tile(self, save=True, display=False, save_scaled=True)
 
   def display_tile(self):
-    save_display_tile(self, save=False, display=True)
+    save_display_tile(self, save=False, display=True, save_scaled=False)
 
   def display_with_histograms(self):
     display_tile(self, rgb_histograms=True, hsv_histograms=True)
 
   def get_np_scaled_tile(self):
-    return self.np_scaled_tile
+    return self.np_scaled_tile_raw
 
   def get_pil_scaled_tile(self):
     return util.np_to_pil(self.np_scaled_tile)
@@ -1948,9 +1995,9 @@ def dynamic_tiles(slide_num, small_tile_in_tile=False):
      TileSummary object with list of top Tile objects. The actual tile images are not retrieved until the
      Tile get_tile() methods are called.
   """
-  np_img, large_w, large_h, small_w, small_h = slide.slide_to_scaled_np_image(slide_num)
-  filt_np_img = filter.apply_image_filters(np_img)
-  tile_summary = score_tiles(slide_num, filt_np_img, (large_w, large_h, small_w, small_h), small_tile_in_tile)
+  np_img, large_w, large_h, small_w, small_h = slide_utils.slide_to_scaled_np_image(slide_num)
+  filt_np_img = filter_utils.apply_image_filters(np_img)
+  tile_summary = score_tiles(slide_num, filt_np_img, np_img, (large_w, large_h, small_w, small_h), small_tile_in_tile)
   return tile_summary
 
 

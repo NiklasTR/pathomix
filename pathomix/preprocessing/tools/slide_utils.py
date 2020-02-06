@@ -19,6 +19,7 @@ import math
 import matplotlib.pyplot as plt
 import multiprocessing
 import numpy as np
+import gc
 import openslide
 from openslide import OpenSlideError
 import os
@@ -27,12 +28,13 @@ from PIL import Image
 import re
 import sys
 from tools import util
+from tools import tiles
 from tools.util import Time
-
+from tools import filter_utils
 
 #BASE_DIR = os.path.join(".", "data")
-#BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
-BASE_DIR = "/home/ubuntu/local_WSI_test"
+BASE_DIR = '/home/pmf/Documents/DataMining/pathomix/data/local_test'
+#BASE_DIR = "/home/ubuntu/local_WSI_test"
 # BASE_DIR = os.path.join(os.sep, "Volumes", "BigData", "TUPAC")
 TRAIN_PREFIX = "TCGA"
 SRC_TRAIN_DIR = os.path.join(BASE_DIR, "WSI")
@@ -40,7 +42,7 @@ SRC_TRAIN_EXT = "svs"
 DEST_TRAIN_SUFFIX = "small-"  # Example: "train-"
 DEST_TRAIN_EXT = "jpg"
 #SCALE_FACTOR = 32
-SCALE_FACTOR = 8
+SCALE_FACTOR = 2
 DEST_TRAIN_DIR = os.path.join(BASE_DIR, "training_" + DEST_TRAIN_EXT)
 THUMBNAIL_SIZE = 300
 THUMBNAIL_EXT = "jpg"
@@ -63,6 +65,14 @@ TILE_SUMMARY_ON_ORIGINAL_THUMBNAIL_DIR = os.path.join(BASE_DIR, "tile_summary_on
 TILE_SUMMARY_PAGINATION_SIZE = 50
 TILE_SUMMARY_PAGINATE = True
 TILE_SUMMARY_HTML_DIR = BASE_DIR
+# size of saved tiles
+ROW_TILE_SIZE_SCALED = 224
+COL_TILE_SIZE_SCALED = 224
+# size of tiles on the original image
+ROW_TILE_SIZE = ROW_TILE_SIZE_SCALED * SCALE_FACTOR
+COL_TILE_SIZE = COL_TILE_SIZE_SCALED * SCALE_FACTOR
+ROW_NUM_SPLIT = 8
+COL_NUM_SPLIT = 8
 
 TILE_DATA_DIR = os.path.join(BASE_DIR, "tile_data")
 TILE_DATA_SUFFIX = "tile_data"
@@ -216,6 +226,37 @@ def get_training_image_path(slide_number, large_w=None, large_h=None, small_w=No
   return img_path
 
 
+def get_training_image_path_split(slide_number, large_w=None, large_h=None, small_w=None, small_h=None, row_idx=None,
+                                  col_idx=None):
+  """
+  Convert slide number and optional dimensions to a training image path. If no dimensions are supplied,
+  the corresponding file based on the slide number will be looked up in the file system using a wildcard.
+
+  Example:
+    5 -> ../data/training_png/TUPAC-TR-005-32x-49920x108288-1560x3384.png
+
+  Args:
+    slide_number: The slide number.
+    large_w: Large image width.
+    large_h: Large image height.
+    small_w: Small image width.
+    small_h: Small image height.
+
+  Returns:
+     Path to the image file.
+  """
+  padded_sl_num = str(slide_number).zfill(3)
+  if large_w is None and large_h is None and small_w is None and small_h is None:
+    wildcard_path = os.path.join(DEST_TRAIN_DIR, TRAIN_PREFIX + padded_sl_num + "*." + DEST_TRAIN_EXT)
+    img_path = glob.glob(wildcard_path)[0]
+  else:
+    img_path = os.path.join(DEST_TRAIN_DIR, TRAIN_PREFIX + padded_sl_num + "-" + str(
+      SCALE_FACTOR) + "x-" + DEST_TRAIN_SUFFIX + str(
+      large_w) + "x" + str(large_h) + "-" + str(small_w) + "x" + str(small_h) + "__" + str(row_idx) + "-" + str(col_idx)
+                            + "." + DEST_TRAIN_EXT)
+  return img_path
+
+
 def get_training_thumbnail_path(slide_number, large_w=None, large_h=None, small_w=None, small_h=None):
   """
   Convert slide number and optional dimensions to a training thumbnail path. If no dimensions are
@@ -242,6 +283,37 @@ def get_training_thumbnail_path(slide_number, large_w=None, large_h=None, small_
     img_path = os.path.join(DEST_TRAIN_THUMBNAIL_DIR, TRAIN_PREFIX + padded_sl_num + "-" + str(
       SCALE_FACTOR) + "x-" + DEST_TRAIN_SUFFIX + str(
       large_w) + "x" + str(large_h) + "-" + str(small_w) + "x" + str(small_h) + "." + THUMBNAIL_EXT)
+  return img_path
+
+
+def get_training_thumbnail_path_split(slide_number, large_w=None, large_h=None, small_w=None, small_h=None,
+                                      row_idx=None, col_idx=None):
+  """
+  Convert slide number and optional dimensions to a training thumbnail path. If no dimensions are
+  supplied, the corresponding file based on the slide number will be looked up in the file system using a wildcard.
+
+  Example:
+    5 -> ../data/training_thumbnail_jpg/TUPAC-TR-005-32x-49920x108288-1560x3384.jpg
+
+  Args:
+    slide_number: The slide number.
+    large_w: Large image width.
+    large_h: Large image height.
+    small_w: Small image width.
+    small_h: Small image height.
+
+  Returns:
+     Path to the thumbnail file.
+  """
+  padded_sl_num = str(slide_number).zfill(3)
+  if large_w is None and large_h is None and small_w is None and small_h is None:
+    wilcard_path = os.path.join(DEST_TRAIN_THUMBNAIL_DIR, TRAIN_PREFIX + padded_sl_num + "*." + THUMBNAIL_EXT)
+    img_path = glob.glob(wilcard_path)[0]
+  else:
+    img_path = os.path.join(DEST_TRAIN_THUMBNAIL_DIR, TRAIN_PREFIX + padded_sl_num + "-" + str(
+      SCALE_FACTOR) + "x-" + DEST_TRAIN_SUFFIX + str(
+      large_w) + "x" + str(large_h) + "-" + str(small_w) + "x" + str(small_h) + "__" + str(row_idx) + "-" + str(col_idx) +
+                            "." + THUMBNAIL_EXT)
   return img_path
 
 
@@ -672,6 +744,26 @@ def training_slide_to_image(slide_number):
   save_thumbnail(img, THUMBNAIL_SIZE, thumbnail_path)
 
 
+def training_slide_to_image_split(slide_number):
+  """
+  Convert a WSI training slide to a saved scaled-down image in a format such as jpg or png.
+
+  Args:
+    slide_number: The slide number.
+  """
+  img, large_w, large_h, new_w, new_h = slide_to_scaled_pil_image_split(slide_number,
+                                                                        row_idx=row_idx, col_idx=col_idx)
+
+  img_path = get_training_image_path(slide_number, large_w, large_h, new_w, new_h)
+  print("Saving image to: " + img_path)
+  if not os.path.exists(DEST_TRAIN_DIR):
+    os.makedirs(DEST_TRAIN_DIR)
+  img.save(img_path)
+
+  thumbnail_path = get_training_thumbnail_path(slide_number, large_w, large_h, new_w, new_h)
+  save_thumbnail(img, THUMBNAIL_SIZE, thumbnail_path)
+
+
 def slide_to_scaled_pil_image(slide_number):
   """
   Convert a WSI training slide to a scaled-down PIL image.
@@ -694,6 +786,78 @@ def slide_to_scaled_pil_image(slide_number):
   whole_slide_image = whole_slide_image.convert("RGB")
   img = whole_slide_image.resize((new_w, new_h), PIL.Image.BILINEAR)
   return img, large_w, large_h, new_w, new_h
+
+
+def slide_to_scaled_tiles(slide_number):
+  """
+  Convert a WSI training slide to a scaled-down PIL image.
+
+  Args:
+    slide_number: The slide number.
+
+  Returns:
+    Tuple consisting of scaled-down PIL image, original width, original height, new width, and new height.
+  """
+  slide_filepath = get_training_slide_path(slide_number)
+  print("Opening Slide #%d: %s" % (slide_number, slide_filepath))
+  my_slide = open_slide(slide_filepath)
+
+  large_w, large_h = my_slide.dimensions
+  level = my_slide.get_best_level_for_downsample(SCALE_FACTOR)
+  # make sure new split is multiple of ROW_TILE_SIZE_SCALED
+  large_w_split = math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED) * ROW_TILE_SIZE_SCALED
+  large_h_split = math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED) * ROW_TILE_SIZE_SCALED
+  new_w = math.floor(large_w_split / SCALE_FACTOR)
+  new_h = math.floor(large_h_split / SCALE_FACTOR)
+
+  indices = tiles.get_tile_indices(my_slide.level_dimensions[level][0], my_slide.level_dimensions[level][1],
+                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED, cutoff=True)
+  t = Time()
+  # split image
+  for ind in indices:
+    row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
+
+    #split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
+    #                                      (large_w_split//int(my_slide.level_downsamples[level]),
+    #                                       large_h_split//int(my_slide.level_downsamples[level])))
+    split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
+                                       (my_slide.level_dimensions[level][0] // COL_NUM_SPLIT,
+                                        my_slide.level_dimensions[level][1] // ROW_NUM_SPLIT))
+    split_patch = split_patch.convert("RGB")
+    split_patch = split_patch.resize((new_w, new_h), PIL.Image.BILINEAR)
+    np_img = util.pil_to_np_rgb(split_patch)
+
+    filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=True, display=False,
+                                                   thumbnail_only=True)
+
+    tile_sum = tiles.score_tiles(slide_number, filt_np_img, np_img, (large_w, large_h, new_w, new_h), small_tile_in_tile=True,
+                                 offset=[row_idx_start, col_idx_start])
+
+    threshold=90
+    counter = 0
+    for tile in tile_sum.tiles_by_tissue_percentage():
+      print(tile.tissue_percentage)
+      if tile.tissue_percentage > threshold:
+        counter += 1
+        tile.save_scaled_tile()
+      else:
+        break
+    print("{} tiles saved".format(counter))
+    '''
+    img_path = get_training_image_path_split(slide_number, large_w, large_h, new_w, new_h, tile_row_idx, tile_col_idx)
+    print("Saving image to: " + img_path)
+    if not os.path.exists(DEST_TRAIN_DIR):
+      os.makedirs(DEST_TRAIN_DIR)
+    img.save(img_path)
+    '''
+    thumbnail_path = get_training_thumbnail_path_split(slide_number, large_w, large_h, new_w, new_h,
+                                                 tile_row_idx, tile_col_idx)
+    save_thumbnail(split_patch, THUMBNAIL_SIZE, thumbnail_path)
+    del tile_sum, filt_np_img, np_img, split_patch
+    gc.collect()
+
+  t.elapsed_display()
+  return None
 
 
 def slide_to_scaled_np_image(slide_number):
@@ -806,7 +970,7 @@ def multiprocess_training_slides_to_images():
   for num_process in range(0, num_processes):
     #start_index = (num_process - 1) * images_per_process + 1
     start_index = (num_process) * images_per_process
-    end_index = num_process * images_per_process
+    end_index = (num_process + 1) * images_per_process -1
     start_index = int(start_index)
     end_index = int(end_index)
     tasks.append((start_index, end_index))
