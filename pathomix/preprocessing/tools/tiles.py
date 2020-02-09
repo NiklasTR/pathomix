@@ -56,8 +56,8 @@ FADED_MEDIUM_COLOR = (255, 255, 128)
 FADED_LOW_COLOR = (255, 210, 128)
 FADED_NONE_COLOR = (255, 128, 128)
 
-FONT_PATH = "/home/pmf/Documents/DataMining/test_read_tcga_slide/python-wsi-preprocessing/docs/arial.ttf"
-SUMMARY_TITLE_FONT_PATH = "/home/pmf/Documents/DataMining/test_read_tcga_slide/python-wsi-preprocessing/docs/arial.ttf"
+FONT_PATH = os.environ['FONT_PATH']
+SUMMARY_TITLE_FONT_PATH = os.environ['FONT_PATH']
 SUMMARY_TITLE_TEXT_COLOR = (0, 0, 0)
 SUMMARY_TITLE_TEXT_SIZE = 24
 SUMMARY_TILE_TEXT_COLOR = (255, 255, 255)
