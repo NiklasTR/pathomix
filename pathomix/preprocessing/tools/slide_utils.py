@@ -27,71 +27,71 @@ import PIL
 from PIL import Image
 import re
 import sys
-from tools import util
-from tools import tiles
-from tools.util import Time
-from tools import filter_utils
+from importlib.machinery import SourceFileLoader
+#from tools import util
+from pathomix.preprocessing.tools import util, tiles, filter_utils
 
-NUM_PROCESSES = multiprocessing.cpu_count() - 2
+cf = SourceFileLoader('cf', './pathomix/preprocessing/tools/configs/config.py').load_module()
+
+NUM_PROCESSES = cf.NUM_PROCESSES
 
 #BASE_DIR = os.path.join(".", "data")
-BASE_DIR = os.environ['PATHOMIX_DATA']
+BASE_DIR = cf.BASE_DIR
 #BASE_DIR = "/home/ubuntu/local_WSI_test"
 # BASE_DIR = os.path.join(os.sep, "Volumes", "BigData", "TUPAC")
-TRAIN_PREFIX = "TCGA"
-SRC_TRAIN_DIR = os.path.join(BASE_DIR, "WSI")
-SRC_TRAIN_EXT = "svs"
-DEST_TRAIN_SUFFIX = "small-"  # Example: "train-"
-DEST_TRAIN_EXT = "jpg"
+TRAIN_PREFIX = cf.TRAIN_PREFIX
+SRC_TRAIN_DIR = cf.SRC_TRAIN_DIR
+SRC_TRAIN_EXT = cf.SRC_TRAIN_EXT
+DEST_TRAIN_SUFFIX = cf.DEST_TRAIN_SUFFIX
+DEST_TRAIN_EXT = cf.DEST_TRAIN_EXT
 #SCALE_FACTOR = 32
-SCALE_FACTOR = 2
-DEST_TRAIN_DIR = os.path.join(BASE_DIR, "training_" + DEST_TRAIN_EXT)
-THUMBNAIL_SIZE = 300
-THUMBNAIL_EXT = "jpg"
+SCALE_FACTOR = cf.SCALE_FACTOR
+DEST_TRAIN_DIR = cf.DEST_TRAIN_DIR
+THUMBNAIL_SIZE = cf.THUMBNAIL_SIZE
+THUMBNAIL_EXT = cf.THUMBNAIL_EXT
 
-DEST_TRAIN_THUMBNAIL_DIR = os.path.join(BASE_DIR, "training_thumbnail_" + THUMBNAIL_EXT)
+DEST_TRAIN_THUMBNAIL_DIR = cf.DEST_TRAIN_THUMBNAIL_DIR
 
-FILTER_SUFFIX = ""  # Example: "filter-"
-FILTER_RESULT_TEXT = "filtered"
-FILTER_DIR = os.path.join(BASE_DIR, "filter_" + DEST_TRAIN_EXT)
-FILTER_THUMBNAIL_DIR = os.path.join(BASE_DIR, "filter_thumbnail_" + THUMBNAIL_EXT)
-FILTER_PAGINATION_SIZE = 50
-FILTER_PAGINATE = True
-FILTER_HTML_DIR = BASE_DIR
+FILTER_SUFFIX = cf.FILTER_SUFFIX
+FILTER_RESULT_TEXT = cf.FILTER_RESULT_TEXT
+FILTER_DIR = cf.FILTER_DIR
+FILTER_THUMBNAIL_DIR = cf.FILTER_THUMBNAIL_DIR
+FILTER_PAGINATION_SIZE = cf.FILTER_PAGINATION_SIZE
+FILTER_PAGINATE = cf.FILTER_PAGINATE
+FILTER_HTML_DIR = cf.FILTER_HTML_DIR
 
-TILE_SUMMARY_DIR = os.path.join(BASE_DIR, "tile_summary_" + DEST_TRAIN_EXT)
-TILE_SUMMARY_ON_ORIGINAL_DIR = os.path.join(BASE_DIR, "tile_summary_on_original_" + DEST_TRAIN_EXT)
-TILE_SUMMARY_SUFFIX = "tile_summary"
-TILE_SUMMARY_THUMBNAIL_DIR = os.path.join(BASE_DIR, "tile_summary_thumbnail_" + THUMBNAIL_EXT)
-TILE_SUMMARY_ON_ORIGINAL_THUMBNAIL_DIR = os.path.join(BASE_DIR, "tile_summary_on_original_thumbnail_" + THUMBNAIL_EXT)
-TILE_SUMMARY_PAGINATION_SIZE = 50
-TILE_SUMMARY_PAGINATE = True
-TILE_SUMMARY_HTML_DIR = BASE_DIR
+TILE_SUMMARY_DIR = cf.TILE_SUMMARY_DIR
+TILE_SUMMARY_ON_ORIGINAL_DIR = cf.TILE_SUMMARY_ON_ORIGINAL_DIR
+TILE_SUMMARY_SUFFIX = cf.TILE_SUMMARY_SUFFIX
+TILE_SUMMARY_THUMBNAIL_DIR = cf.TILE_SUMMARY_THUMBNAIL_DIR
+TILE_SUMMARY_ON_ORIGINAL_THUMBNAIL_DIR = cf.TILE_SUMMARY_ON_ORIGINAL_THUMBNAIL_DIR
+TILE_SUMMARY_PAGINATION_SIZE = cf.TILE_SUMMARY_PAGINATION_SIZE
+TILE_SUMMARY_PAGINATE = cf.TILE_SUMMARY_PAGINATE
+TILE_SUMMARY_HTML_DIR = cf.TILE_SUMMARY_HTML_DIR
 # size of saved tiles
-ROW_TILE_SIZE_SCALED = 224
-COL_TILE_SIZE_SCALED = 224
+ROW_TILE_SIZE_SCALED = cf.ROW_TILE_SIZE_SCALED
+COL_TILE_SIZE_SCALED = cf.COL_TILE_SIZE_SCALED
 # size of tiles on the original image
-ROW_TILE_SIZE = ROW_TILE_SIZE_SCALED * SCALE_FACTOR
-COL_TILE_SIZE = COL_TILE_SIZE_SCALED * SCALE_FACTOR
-ROW_NUM_SPLIT = 8
+ROW_TILE_SIZE = cf.ROW_TILE_SIZE
+COL_TILE_SIZE = cf.COL_TILE_SIZE
+ROW_NUM_SPLIT = cf.ROW_NUM_SPLIT
 # make sure all cores are used for processing
-COL_NUM_SPLIT = NUM_PROCESSES
+COL_NUM_SPLIT = cf.COL_NUM_SPLIT
 
-TILE_DATA_DIR = os.path.join(BASE_DIR, "tile_data")
-TILE_DATA_SUFFIX = "tile_data"
+TILE_DATA_DIR = cf.TILE_DATA_DIR
+TILE_DATA_SUFFIX = cf.TILE_DATA_SUFFIX
 
-TOP_TILES_SUFFIX = "top_tile_summary"
-TOP_TILES_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_" + DEST_TRAIN_EXT)
-TOP_TILES_THUMBNAIL_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_thumbnail_" + THUMBNAIL_EXT)
-TOP_TILES_ON_ORIGINAL_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_on_original_" + DEST_TRAIN_EXT)
-TOP_TILES_ON_ORIGINAL_THUMBNAIL_DIR = os.path.join(BASE_DIR,
-                                                   TOP_TILES_SUFFIX + "_on_original_thumbnail_" + THUMBNAIL_EXT)
-TISSUE_THRESHOLD = 90
+TOP_TILES_SUFFIX = cf.TOP_TILES_SUFFIX
+TOP_TILES_DIR = cf.TOP_TILES_DIR
+TOP_TILES_THUMBNAIL_DIR = cf.TOP_TILES_THUMBNAIL_DIR
+TOP_TILES_ON_ORIGINAL_DIR = cf.TOP_TILES_ON_ORIGINAL_DIR
+TOP_TILES_ON_ORIGINAL_THUMBNAIL_DIR = cf.TOP_TILES_ON_ORIGINAL_THUMBNAIL_DIR
+TISSUE_THRESHOLD = cf.TISSUE_THRESHOLD
 
-TILE_DIR = os.path.join(BASE_DIR, "tiles_" + DEST_TRAIN_EXT)
-TILE_SUFFIX = "tile"
+TILE_DIR = cf.TILE_DIR
+TILE_SUFFIX = cf.TILE_SUFFIX
 
-STATS_DIR = os.path.join(BASE_DIR, "svs_stats")
+STATS_DIR = cf.STATS_DIR
 
 
 def open_slide(filename):
@@ -794,13 +794,16 @@ def slide_to_scaled_pil_image(slide_number):
 
 def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   """
-  Convert a WSI training slide to a scaled-down PIL image.
+  Convert a WSI training slide to a scaled-down jpw images in a multiprocessing manner.
 
   Args:
     slide_number: The slide number.
+    :param small_tile_in_tile: (bool) if true: np_array is stored in tile_summary. this speeds up tile processing
+    however needs more RAM (memory)
 
   Returns:
-    Tuple consisting of scaled-down PIL image, original width, original height, new width, and new height.
+    None
+
   """
   slide_filepath = get_training_slide_path(slide_number)
   print("Opening Slide #%d: %s" % (slide_number, slide_filepath))
@@ -815,12 +818,11 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   new_h = math.floor(large_h_split / SCALE_FACTOR)
 
   indices = tiles.get_tile_indices(my_slide.level_dimensions[level][0], my_slide.level_dimensions[level][1],
-                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED, cutoff=True)
+                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE, cutoff=True)
   num_indices = len(indices)
-  t = Time()
+  t = util.Time()
 
-  num_processes = multiprocessing.cpu_count()
-  p = multiprocessing.Pool(num_processes-2)
+  p = multiprocessing.Pool(NUM_PROCESSES)
 
   p.map(split_subslide_into_tile,
         zip([slide_number] * num_indices, indices, [level] * num_indices,
@@ -960,7 +962,7 @@ def singleprocess_training_slides_to_images():
   """
   Convert all WSI training slides to smaller images using a single process.
   """
-  t = Time()
+  t = util.Time()
 
   num_train_images = get_num_training_slides()
   training_slide_range_to_images(1, num_train_images)
@@ -973,7 +975,7 @@ def multiprocess_training_slides_to_images():
   Convert all WSI training slides to smaller images using multiple processes (one process per core).
   Each process will process a range of slide numbers.
   """
-  timer = Time()
+  timer = util.Time()
 
   # how many processes to use
   num_processes = multiprocessing.cpu_count()
@@ -1021,7 +1023,7 @@ def slide_stats():
   """
   Display statistics/graphs about training slides.
   """
-  t = Time()
+  t = util.Time()
 
   if not os.path.exists(STATS_DIR):
     os.makedirs(STATS_DIR)
@@ -1168,7 +1170,7 @@ def slide_info(display_all_properties=False):
   Args:
     display_all_properties: If True, display all available slide properties.
   """
-  t = Time()
+  t = util.Time()
 
   num_train_images = get_num_training_slides()
   obj_pow_20_list = []

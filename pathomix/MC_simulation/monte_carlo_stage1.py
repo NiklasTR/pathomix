@@ -4,7 +4,7 @@ import math
 
 import pandas as pd
 
-from utils.utils import *
+from pathomix.MC_simulation.utils.utils import simulate_stage0
 
 cf = SourceFileLoader('cf', 'configs/configs_mc.py').load_module()
 

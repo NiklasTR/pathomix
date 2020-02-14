@@ -25,50 +25,51 @@ import matplotlib.pyplot as plt
 import multiprocessing
 import numpy as np
 import os
+from importlib.machinery import SourceFileLoader
 from PIL import Image, ImageDraw, ImageFont
 from enum import Enum
-from tools import util
-from tools import filter_utils
-from tools import slide_utils
-from tools.util import Time
+from pathomix.preprocessing.tools import util, filter_utils, slide_utils
 
-TISSUE_HIGH_THRESH = 95
-TISSUE_LOW_THRESH = 10
 
-ROW_TILE_SIZE = 448
-COL_TILE_SIZE = 448
-NUM_TOP_TILES = 50
+cf = SourceFileLoader('cf', './pathomix/preprocessing/tools/configs/config.py').load_module()
 
-DISPLAY_TILE_SUMMARY_LABELS = False
-TILE_LABEL_TEXT_SIZE = 10
-LABEL_ALL_TILES_IN_TOP_TILE_SUMMARY = False
-BORDER_ALL_TILES_IN_TOP_TILE_SUMMARY = False
+TISSUE_HIGH_THRESH = cf.TISSUE_HIGH_THRESH
+TISSUE_LOW_THRESH = cf.TISSUE_LOW_THRESH
 
-TILE_BORDER_SIZE = 2  # The size of the colored rectangular border around summary tiles.
+ROW_TILE_SIZE = cf.ROW_TILE_SIZE
+COL_TILE_SIZE = cf.COL_TILE_SIZE
+NUM_TOP_TILES = cf.NUM_TOP_TILES
 
-HIGH_COLOR = (0, 255, 0)
-MEDIUM_COLOR = (255, 255, 0)
-LOW_COLOR = (255, 165, 0)
-NONE_COLOR = (255, 0, 0)
+DISPLAY_TILE_SUMMARY_LABELS = cf.DISPLAY_TILE_SUMMARY_LABELS
+TILE_LABEL_TEXT_SIZE = cf.TILE_LABEL_TEXT_SIZE
+LABEL_ALL_TILES_IN_TOP_TILE_SUMMARY = cf.LABEL_ALL_TILES_IN_TOP_TILE_SUMMARY
+BORDER_ALL_TILES_IN_TOP_TILE_SUMMARY = cf.BORDER_ALL_TILES_IN_TOP_TILE_SUMMARY
 
-FADED_THRESH_COLOR = (128, 255, 128)
-FADED_MEDIUM_COLOR = (255, 255, 128)
-FADED_LOW_COLOR = (255, 210, 128)
-FADED_NONE_COLOR = (255, 128, 128)
+TILE_BORDER_SIZE = cf.TILE_BORDER_SIZE
 
-FONT_PATH = os.environ['FONT_PATH']
-SUMMARY_TITLE_FONT_PATH = os.environ['FONT_PATH']
-SUMMARY_TITLE_TEXT_COLOR = (0, 0, 0)
-SUMMARY_TITLE_TEXT_SIZE = 24
-SUMMARY_TILE_TEXT_COLOR = (255, 255, 255)
-TILE_TEXT_COLOR = (0, 0, 0)
-TILE_TEXT_SIZE = 36
-TILE_TEXT_BACKGROUND_COLOR = (255, 255, 255)
-TILE_TEXT_W_BORDER = 5
-TILE_TEXT_H_BORDER = 4
+HIGH_COLOR = cf.HIGH_COLOR
+MEDIUM_COLOR = cf.MEDIUM_COLOR
+LOW_COLOR = cf.LOW_COLOR
+NONE_COLOR = cf.NONE_COLOR
 
-HSV_PURPLE = 270
-HSV_PINK = 330
+FADED_THRESH_COLOR = cf.FADED_THRESH_COLOR
+FADED_MEDIUM_COLOR = cf.FADED_MEDIUM_COLOR
+FADED_LOW_COLOR = cf.FADED_LOW_COLOR
+FADED_NONE_COLOR = cf.FADED_NONE_COLOR
+
+FONT_PATH = cf.FONT_PATH
+SUMMARY_TITLE_FONT_PATH = cf.SUMMARY_TITLE_FONT_PATH
+SUMMARY_TITLE_TEXT_COLOR = cf.SUMMARY_TITLE_TEXT_COLOR
+SUMMARY_TITLE_TEXT_SIZE = cf.SUMMARY_TITLE_TEXT_SIZE
+SUMMARY_TILE_TEXT_COLOR = cf.SUMMARY_TILE_TEXT_COLOR
+TILE_TEXT_COLOR = cf.TILE_TEXT_COLOR
+TILE_TEXT_SIZE = cf.TILE_TEXT_SIZE
+TILE_TEXT_BACKGROUND_COLOR = cf.TILE_TEXT_BACKGROUND_COLOR
+TILE_TEXT_W_BORDER = cf.TILE_TEXT_W_BORDER
+TILE_TEXT_H_BORDER = cf.TILE_TEXT_H_BORDER
+
+HSV_PURPLE = cf.HSV_PURPLE
+HSV_PINK = cf.HSV_PINK
 
 
 def get_num_tiles(rows, cols, row_tile_size, col_tile_size, cutoff=False):
@@ -448,12 +449,12 @@ def save_tile_summary_image(pil_img, slide_num):
     pil_img: Image as a PIL Image.
     slide_num: The slide number.
   """
-  t = Time()
+  t = util.Time()
   filepath = slide_utils.get_tile_summary_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum", str(t.elapsed()), filepath))
 
-  t = Time()
+  t = util.Time()
   thumbnail_filepath = slide_utils.get_tile_summary_thumbnail_path(slide_num)
   slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum Thumb", str(t.elapsed()), thumbnail_filepath))
@@ -467,12 +468,12 @@ def save_top_tiles_image(pil_img, slide_num):
     pil_img: Image as a PIL Image.
     slide_num: The slide number.
   """
-  t = Time()
+  t = util.Time()
   filepath = slide_utils.get_top_tiles_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Tiles Image", str(t.elapsed()), filepath))
 
-  t = Time()
+  t = util.Time()
   thumbnail_filepath = slide_utils.get_top_tiles_thumbnail_path(slide_num)
   slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Tiles Thumb", str(t.elapsed()), thumbnail_filepath))
@@ -486,12 +487,12 @@ def save_tile_summary_on_original_image(pil_img, slide_num):
     pil_img: Image as a PIL Image.
     slide_num: The slide number.
   """
-  t = Time()
+  t = util.Time()
   filepath = slide_utils.get_tile_summary_on_original_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Tile Sum Orig", str(t.elapsed()), filepath))
 
-  t = Time()
+  t = util.Time()
   thumbnail_filepath = slide_utils.get_tile_summary_on_original_thumbnail_path(slide_num)
   slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print(
@@ -506,12 +507,12 @@ def save_top_tiles_on_original_image(pil_img, slide_num):
     pil_img: Image as a PIL Image.
     slide_num: The slide number.
   """
-  t = Time()
+  t = util.Time()
   filepath = slide_utils.get_top_tiles_on_original_image_path(slide_num)
   pil_img.save(filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Orig", str(t.elapsed()), filepath))
 
-  t = Time()
+  t = util.Time()
   thumbnail_filepath = slide_utils.get_top_tiles_on_original_thumbnail_path(slide_num)
   slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
   print(
@@ -565,7 +566,7 @@ def save_tile_data(tile_summary):
     tile_summary: TimeSummary object.
   """
 
-  time = Time()
+  time = util.Time()
 
   csv = summary_title(tile_summary) + "\n" + summary_stats(tile_summary)
 
@@ -638,7 +639,7 @@ def save_display_tile(tile, save=True, display=False, save_scaled=False):
     tile_pil_img = tile_to_pil_tile(tile)
 
   if save:
-    t = Time()
+    t = util.Time()
     img_path = slide_utils.get_tile_image_path(tile)
     dir = os.path.dirname(img_path)
     if not os.path.exists(dir):
@@ -885,7 +886,7 @@ def singleprocess_filtered_images_to_tiles(display=False, save_summary=True, sav
     html: If True, generate HTML page to display tiled images
     image_num_list: Optionally specify a list of image slide numbers.
   """
-  t = Time()
+  t = util.Time()
   print("Generating tile summaries\n")
 
   if image_num_list is not None:
@@ -915,7 +916,7 @@ def multiprocess_filtered_images_to_tiles(display=False, save_summary=True, save
     html: If True, generate HTML page to display tiled images.
     image_num_list: Optionally specify a list of image slide numbers.
   """
-  timer = Time()
+  timer = util.Time()
   print("Generating tile summaries (multiprocess)\n")
 
   if save_summary and not os.path.exists(slide_utils.TILE_SUMMARY_DIR):

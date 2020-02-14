@@ -26,11 +26,11 @@ import skimage.filters as sk_filters
 import skimage.future as sk_future
 import skimage.morphology as sk_morphology
 import skimage.segmentation as sk_segmentation
+from importlib.machinery import SourceFileLoader
 
-from tools import slide_utils
-from tools import util
-from tools.util import Time
+from pathomix.preprocessing.tools import slide_utils, util
 
+cf = SourceFileLoader('cf', './pathomix/preprocessing/tools/configs/config.py').load_module()
 
 def filter_rgb_to_grayscale(np_img, output_type="uint8"):
   """
@@ -65,7 +65,7 @@ def filter_complement(np_img, output_type="uint8"):
   Returns:
     Complement image as Numpy array.
   """
-  t = Time()
+  t = util.Time()
   if output_type == "float":
     complement = 1.0 - np_img
   else:
@@ -87,7 +87,7 @@ def filter_hysteresis_threshold(np_img, low=50, high=100, output_type="uint8"):
   Returns:
     NumPy array (bool, float, or uint8) where True, 1.0, and 255 represent a pixel above hysteresis threshold.
   """
-  t = Time()
+  t = util.Time()
   hyst = sk_filters.apply_hysteresis_threshold(np_img, low, high)
   if output_type == "bool":
     pass
@@ -110,7 +110,7 @@ def filter_otsu_threshold(np_img, output_type="uint8"):
   Returns:
     NumPy array (bool, float, or uint8) where True, 1.0, and 255 represent a pixel above Otsu threshold.
   """
-  t = Time()
+  t = util.Time()
   otsu_thresh_value = sk_filters.threshold_otsu(np_img)
   otsu = (np_img > otsu_thresh_value)
   if output_type == "bool":
@@ -136,7 +136,7 @@ def filter_local_otsu_threshold(np_img, disk_size=3, output_type="uint8"):
   Returns:
     NumPy array (bool, float, or uint8) where local Otsu threshold values have been applied to original image.
   """
-  t = Time()
+  t = util.Time()
   local_otsu = sk_filters.rank.otsu(np_img, sk_morphology.disk(disk_size))
   if output_type == "bool":
     pass
@@ -161,7 +161,7 @@ def filter_entropy(np_img, neighborhood=9, threshold=5, output_type="uint8"):
   Returns:
     NumPy array (bool, float, or uint8) where True, 1.0, and 255 represent a measure of complexity.
   """
-  t = Time()
+  t = util.Time()
   entr = sk_filters.rank.entropy(np_img, np.ones((neighborhood, neighborhood))) > threshold
   if output_type == "bool":
     pass
@@ -187,7 +187,7 @@ def filter_canny(np_img, sigma=1, low_threshold=0, high_threshold=25, output_typ
   Returns:
     NumPy array (bool, float, or uint8) representing Canny edge map (binary image).
   """
-  t = Time()
+  t = util.Time()
   can = sk_feature.canny(np_img, sigma=sigma, low_threshold=low_threshold, high_threshold=high_threshold)
   if output_type == "bool":
     pass
@@ -246,7 +246,7 @@ def filter_remove_small_objects(np_img, min_size=3000, avoid_overmask=True, over
   Returns:
     NumPy array (bool, float, or uint8).
   """
-  t = Time()
+  t = util.Time()
 
   rem_sm = np_img.astype(bool)  # make sure mask is boolean
   rem_sm = sk_morphology.remove_small_objects(rem_sm, min_size=min_size)
@@ -281,7 +281,7 @@ def filter_remove_small_holes(np_img, min_size=3000, output_type="uint8"):
   Returns:
     NumPy array (bool, float, or uint8).
   """
-  t = Time()
+  t = util.Time()
 
   rem_sm = sk_morphology.remove_small_holes(np_img, min_size=min_size)
 
@@ -309,7 +309,7 @@ def filter_contrast_stretch(np_img, low=40, high=60):
   Returns:
     Image as NumPy array with contrast enhanced.
   """
-  t = Time()
+  t = util.Time()
   low_p, high_p = np.percentile(np_img, (low * 100 / 255, high * 100 / 255))
   contrast_stretch = sk_exposure.rescale_intensity(np_img, in_range=(low_p, high_p))
   util.np_info(contrast_stretch, "Contrast Stretch", t.elapsed())
@@ -328,7 +328,7 @@ def filter_histogram_equalization(np_img, nbins=256, output_type="uint8"):
   Returns:
      NumPy array (float or uint8) with contrast enhanced by histogram equalization.
   """
-  t = Time()
+  t = util.Time()
   # if uint8 type and nbins is specified, convert to float so that nbins can be a value besides 256
   if np_img.dtype == "uint8" and nbins != 256:
     np_img = np_img / 255
@@ -355,7 +355,7 @@ def filter_adaptive_equalization(np_img, nbins=256, clip_limit=0.01, output_type
   Returns:
      NumPy array (float or uint8) with contrast enhanced by adaptive equalization.
   """
-  t = Time()
+  t = util.Time()
   adapt_equ = sk_exposure.equalize_adapthist(np_img, nbins=nbins, clip_limit=clip_limit)
   if output_type == "float":
     pass
@@ -376,7 +376,7 @@ def filter_local_equalization(np_img, disk_size=50):
   Returns:
     NumPy array with contrast enhanced using local equalization.
   """
-  t = Time()
+  t = util.Time()
   local_equ = sk_filters.rank.equalize(np_img, selem=sk_morphology.disk(disk_size))
   util.np_info(local_equ, "Local Equalization", t.elapsed())
   return local_equ
@@ -393,7 +393,7 @@ def filter_rgb_to_hed(np_img, output_type="uint8"):
   Returns:
     NumPy array (float or uint8) with HED channels.
   """
-  t = Time()
+  t = util.Time()
   hed = sk_color.rgb2hed(np_img)
   if output_type == "float":
     hed = sk_exposure.rescale_intensity(hed, out_range=(0.0, 1.0))
@@ -417,7 +417,7 @@ def filter_rgb_to_hsv(np_img, display_np_info=True):
   """
 
   if display_np_info:
-    t = Time()
+    t = util.Time()
   hsv = sk_color.rgb2hsv(np_img)
   if display_np_info:
     util.np_info(hsv, "RGB to HSV", t.elapsed())
@@ -439,7 +439,7 @@ def filter_hsv_to_h(hsv, output_type="int", display_np_info=True):
     Hue values (float or int) as a 1-dimensional NumPy array.
   """
   if display_np_info:
-    t = Time()
+    t = util.Time()
   h = hsv[:, :, 0]
   h = h.flatten()
   if output_type == "int":
@@ -492,7 +492,7 @@ def filter_hed_to_hematoxylin(np_img, output_type="uint8"):
   Returns:
     NumPy array for Hematoxylin channel.
   """
-  t = Time()
+  t = util.Time()
   hema = np_img[:, :, 0]
   if output_type == "float":
     hema = sk_exposure.rescale_intensity(hema, out_range=(0.0, 1.0))
@@ -514,7 +514,7 @@ def filter_hed_to_eosin(np_img, output_type="uint8"):
   Returns:
     NumPy array for Eosin channel.
   """
-  t = Time()
+  t = util.Time()
   eosin = np_img[:, :, 1]
   if output_type == "float":
     eosin = sk_exposure.rescale_intensity(eosin, out_range=(0.0, 1.0))
@@ -535,7 +535,7 @@ def filter_binary_fill_holes(np_img, output_type="bool"):
   Returns:
     NumPy array (bool, float, or uint8) where holes have been filled.
   """
-  t = Time()
+  t = util.Time()
   if np_img.dtype == "uint8":
     np_img = np_img / 255
   result = sc_morph.binary_fill_holes(np_img)
@@ -562,7 +562,7 @@ def filter_binary_erosion(np_img, disk_size=5, iterations=1, output_type="uint8"
   Returns:
     NumPy array (bool, float, or uint8) where edges have been eroded.
   """
-  t = Time()
+  t = util.Time()
   if np_img.dtype == "uint8":
     np_img = np_img / 255
   result = sc_morph.binary_erosion(np_img, sk_morphology.disk(disk_size), iterations=iterations)
@@ -589,7 +589,7 @@ def filter_binary_dilation(np_img, disk_size=5, iterations=1, output_type="uint8
   Returns:
     NumPy array (bool, float, or uint8) where edges have been dilated.
   """
-  t = Time()
+  t = util.Time()
   if np_img.dtype == "uint8":
     np_img = np_img / 255
   result = sc_morph.binary_dilation(np_img, sk_morphology.disk(disk_size), iterations=iterations)
@@ -617,7 +617,7 @@ def filter_binary_opening(np_img, disk_size=3, iterations=1, output_type="uint8"
   Returns:
     NumPy array (bool, float, or uint8) following binary opening.
   """
-  t = Time()
+  t = util.Time()
   if np_img.dtype == "uint8":
     np_img = np_img / 255
   result = sc_morph.binary_opening(np_img, sk_morphology.disk(disk_size), iterations=iterations)
@@ -645,7 +645,7 @@ def filter_binary_closing(np_img, disk_size=3, iterations=1, output_type="uint8"
   Returns:
     NumPy array (bool, float, or uint8) following binary closing.
   """
-  t = Time()
+  t = util.Time()
   if np_img.dtype == "uint8":
     np_img = np_img / 255
   result = sc_morph.binary_closing(np_img, sk_morphology.disk(disk_size), iterations=iterations)
@@ -673,7 +673,7 @@ def filter_kmeans_segmentation(np_img, compactness=10, n_segments=800):
     NumPy array (uint8) representing 3-channel RGB image where each segment has been colored based on the average
     color for that segment.
   """
-  t = Time()
+  t = util.Time()
   labels = sk_segmentation.slic(np_img, compactness=compactness, n_segments=n_segments)
   result = sk_color.label2rgb(labels, np_img, kind='avg')
   util.np_info(result, "K-Means Segmentation", t.elapsed())
@@ -695,7 +695,7 @@ def filter_rag_threshold(np_img, compactness=10, n_segments=800, threshold=9):
     NumPy array (uint8) representing 3-channel RGB image where each segment has been colored based on the average
     color for that segment (and similar segments have been combined).
   """
-  t = Time()
+  t = util.Time()
   labels = sk_segmentation.slic(np_img, compactness=compactness, n_segments=n_segments)
   g = sk_future.graph.rag_mean_color(np_img, labels)
   labels2 = sk_future.graph.cut_threshold(labels, g, threshold)
@@ -717,7 +717,7 @@ def filter_threshold(np_img, threshold, output_type="bool"):
     NumPy array representing a mask where a pixel has a value (T, 1.0, or 255) if the corresponding input array
     pixel exceeds the threshold value.
   """
-  t = Time()
+  t = util.Time()
   result = (np_img > threshold)
   if output_type == "bool":
     pass
@@ -744,7 +744,7 @@ def filter_green_channel(np_img, green_thresh=200, avoid_overmask=True, overmask
   Returns:
     NumPy array representing a mask where pixels above a particular green channel threshold have been masked out.
   """
-  t = Time()
+  t = util.Time()
 
   g = np_img[:, :, 1]
   gr_ch_mask = (g < green_thresh) & (g > 0)
@@ -786,7 +786,7 @@ def filter_red(rgb, red_lower_thresh, green_upper_thresh, blue_upper_thresh, out
     NumPy array representing the mask.
   """
   if display_np_info:
-    t = Time()
+    t = util.Time()
   r = rgb[:, :, 0] > red_lower_thresh
   g = rgb[:, :, 1] < green_upper_thresh
   b = rgb[:, :, 2] < blue_upper_thresh
@@ -813,7 +813,7 @@ def filter_red_pen(rgb, output_type="bool"):
   Returns:
     NumPy array representing the mask.
   """
-  t = Time()
+  t = util.Time()
   result = filter_red(rgb, red_lower_thresh=150, green_upper_thresh=80, blue_upper_thresh=90) & \
            filter_red(rgb, red_lower_thresh=110, green_upper_thresh=20, blue_upper_thresh=30) & \
            filter_red(rgb, red_lower_thresh=185, green_upper_thresh=65, blue_upper_thresh=105) & \
@@ -853,7 +853,7 @@ def filter_green(rgb, red_upper_thresh, green_lower_thresh, blue_lower_thresh, o
     NumPy array representing the mask.
   """
   if display_np_info:
-    t = Time()
+    t = util.Time()
   r = rgb[:, :, 0] < red_upper_thresh
   g = rgb[:, :, 1] > green_lower_thresh
   b = rgb[:, :, 2] > blue_lower_thresh
@@ -880,7 +880,7 @@ def filter_green_pen(rgb, output_type="bool"):
   Returns:
     NumPy array representing the mask.
   """
-  t = Time()
+  t = util.Time()
   result = filter_green(rgb, red_upper_thresh=150, green_lower_thresh=160, blue_lower_thresh=140) & \
            filter_green(rgb, red_upper_thresh=70, green_lower_thresh=110, blue_lower_thresh=110) & \
            filter_green(rgb, red_upper_thresh=45, green_lower_thresh=115, blue_lower_thresh=100) & \
@@ -924,7 +924,7 @@ def filter_blue(rgb, red_upper_thresh, green_upper_thresh, blue_lower_thresh, ou
     NumPy array representing the mask.
   """
   if display_np_info:
-    t = Time()
+    t = util.Time()
   r = rgb[:, :, 0] < red_upper_thresh
   g = rgb[:, :, 1] < green_upper_thresh
   b = rgb[:, :, 2] > blue_lower_thresh
@@ -951,7 +951,7 @@ def filter_blue_pen(rgb, output_type="bool"):
   Returns:
     NumPy array representing the mask.
   """
-  t = Time()
+  t = util.Time()
   result = filter_blue(rgb, red_upper_thresh=60, green_upper_thresh=120, blue_lower_thresh=190) & \
            filter_blue(rgb, red_upper_thresh=120, green_upper_thresh=170, blue_lower_thresh=200) & \
            filter_blue(rgb, red_upper_thresh=175, green_upper_thresh=210, blue_lower_thresh=230) & \
@@ -986,7 +986,7 @@ def filter_grays(rgb, tolerance=15, output_type="bool"):
   Returns:
     NumPy array representing a mask where pixels with similar red, green, and blue values have been masked out.
   """
-  t = Time()
+  t = util.Time()
   (h, w, c) = rgb.shape
 
   rgb = rgb.astype(np.int)
@@ -1091,27 +1091,27 @@ def apply_filters_to_image(slide_num, save=True, display=False):
     Tuple consisting of 1) the resulting filtered image as a NumPy array, and 2) dictionary of image information
     (used for HTML page generation).
   """
-  t = Time()
+  t = util.Time()
   print("Processing slide #%d" % slide_num)
 
   info = dict()
 
-  if save and not os.path.exists(slide_utils.FILTER_DIR):
-    os.makedirs(slide_utils.FILTER_DIR)
+  if save and not os.path.exists(cf.FILTER_DIR):
+    os.makedirs(cf.FILTER_DIR)
   img_path = slide_utils.get_training_image_path(slide_num)
   np_orig = slide_utils.open_image_np(img_path)
   filtered_np_img = apply_image_filters(np_orig, slide_num, info, save=save, display=display)
 
   if save:
-    t1 = Time()
+    t1 = util.Time()
     result_path = slide_utils.get_filter_image_result(slide_num)
     pil_img = util.np_to_pil(filtered_np_img)
     pil_img.save(result_path)
     print("%-20s | Time: %-14s  Name: %s" % ("Save Image", str(t1.elapsed()), result_path))
 
-    t1 = Time()
+    t1 = util.Time()
     thumbnail_path = slide_utils.get_filter_thumbnail_result(slide_num)
-    slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_path)
+    slide_utils.save_thumbnail(pil_img, cf.THUMBNAIL_SIZE, thumbnail_path)
     print("%-20s | Time: %-14s  Name: %s" % ("Save Thumbnail", str(t1.elapsed()), thumbnail_path))
 
   print("Slide #%03d processing time: %s\n" % (slide_num, str(t.elapsed())))
@@ -1237,13 +1237,13 @@ def save_filtered_image(np_img, slide_num, filter_num, filter_text, thumbnail_on
   filepath = slide_utils.get_filter_image_path(slide_num, filter_num, filter_text)
   pil_img = util.np_to_pil(np_img)
   if not thumbnail_only:
-    t = Time()
+    t = util.Time()
     pil_img.save(filepath)
     print("%-20s | Time: %-14s  Name: %s" % ("Save Image", str(t.elapsed()), filepath))
 
-  t1 = Time()
+  t1 = util.Time()
   thumbnail_filepath = slide_utils.get_filter_thumbnail_path(slide_num, filter_num, filter_text)
-  slide_utils.save_thumbnail(pil_img, slide_utils.THUMBNAIL_SIZE, thumbnail_filepath)
+  slide_utils.save_thumbnail(pil_img, cf.THUMBNAIL_SIZE, thumbnail_filepath)
   print("%-20s | Time: %-14s  Name: %s" % ("Save Thumbnail", str(t1.elapsed()), thumbnail_filepath))
 
 
@@ -1254,7 +1254,7 @@ def generate_filter_html_result(html_page_info):
   Args:
     html_page_info: Dictionary of image information.
   """
-  if not slide_utils.FILTER_PAGINATE:
+  if not cf.FILTER_PAGINATE:
     html = ""
     html += html_header("Filtered Images")
     html += "  <table>\n"
@@ -1273,7 +1273,7 @@ def generate_filter_html_result(html_page_info):
 
     html += "  </table>\n"
     html += html_footer()
-    text_file = open(os.path.join(slide_utils.FILTER_HTML_DIR, "filters.html"), "w")
+    text_file = open(os.path.join(cf.FILTER_HTML_DIR, "filters.html"), "w")
     text_file.write(html)
     text_file.close()
   else:
@@ -1283,7 +1283,7 @@ def generate_filter_html_result(html_page_info):
       slide_nums.add(slide_num)
     slide_nums = sorted(list(slide_nums))
     total_len = len(slide_nums)
-    page_size = slide_utils.FILTER_PAGINATION_SIZE
+    page_size = cf.FILTER_PAGINATION_SIZE
     num_pages = math.ceil(total_len / page_size)
 
     for page_num in range(1, num_pages + 1):
@@ -1321,9 +1321,9 @@ def generate_filter_html_result(html_page_info):
 
       html += html_footer()
       if page_num == 1:
-        text_file = open(os.path.join(slide_utils.FILTER_HTML_DIR, "filters.html"), "w")
+        text_file = open(os.path.join(cf.FILTER_HTML_DIR, "filters.html"), "w")
       else:
-        text_file = open(os.path.join(slide_utils.FILTER_HTML_DIR, "filters-%d.html" % page_num), "w")
+        text_file = open(os.path.join(cf.FILTER_HTML_DIR, "filters-%d.html" % page_num), "w")
       text_file.write(html)
       text_file.close()
 
@@ -1378,7 +1378,7 @@ def singleprocess_apply_filters_to_images(save=True, display=False, html=True, i
     html: If True, generate HTML page to display filtered images.
     image_num_list: Optionally specify a list of image slide numbers.
   """
-  t = Time()
+  t = util.Time()
   print("Applying filters to images\n")
 
   if image_num_list is not None:
@@ -1403,11 +1403,11 @@ def multiprocess_apply_filters_to_images(save=True, display=False, html=True, im
     html: If True, generate HTML page to display filtered images.
     image_num_list: Optionally specify a list of image slide numbers.
   """
-  timer = Time()
+  timer = util.Time()
   print("Applying filters to images (multiprocess)\n")
 
-  if save and not os.path.exists(slide_utils.FILTER_DIR):
-    os.makedirs(slide_utils.FILTER_DIR)
+  if save and not os.path.exists(cf.FILTER_DIR):
+    os.makedirs(cf.FILTER_DIR)
 
   # how many processes to use
   num_processes = multiprocessing.cpu_count()

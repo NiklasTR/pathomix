@@ -16,10 +16,12 @@
 
 import datetime
 import numpy as np
+from importlib.machinery import SourceFileLoader
 from PIL import Image, ImageDraw, ImageFont
 
+cf = SourceFileLoader('cf', './pathomix/preprocessing/tools/configs/config.py').load_module()
 # If True, display additional NumPy array stats (min, max, mean, is_binary).
-ADDITIONAL_NP_STATS = False
+ADDITIONAL_NP_STATS = cf.ADDITIONAL_NP_STATS
 
 
 def pil_to_np_rgb(pil_img):
