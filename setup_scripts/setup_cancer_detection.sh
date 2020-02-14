@@ -18,6 +18,6 @@ pip install -r requirements.txt
 wandb login
 
 aws configure
-aws s3 sync s3://evotec/pathomix/cancer_detection_jakob /home/ubuntu/bucket
+aws s3 sync s3://evotec/pathomix/cancer_detection_jakob /home/ubuntu/bucket/Jakob_cancer_detection/
 
 
