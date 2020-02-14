@@ -72,7 +72,7 @@ def create_test_set(base_dir=os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_ca
 
 width_shift_range = 0.2
 seed = 42
-batch_size = 1
+batch_size = 8
 input_size = (224, 224)
 # input_size = (456,456)
 
@@ -109,7 +109,7 @@ val_datagen = ImageDataGenerator(
 )
 
 df_total = create_data_frame(base_dir=data_dir)
-kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
 # get indices for train and validation
 train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
 df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
@@ -131,10 +131,12 @@ decay = 1e-6
 momentum = 0.0
 nesterov = False
 
+labels =list(train_generator.class_indices.keys())
+
 # load model with pretrained- weights
 model = efn.EfficientNetB0(weights='imagenet')
 x = model.output
-pred = Dense(3, activation='sigmoid')(x)
+pred = Dense(len(labels), activation='sigmoid')(x)
 
 model = Model(inputs=model.input, outputs=pred)
 
@@ -147,7 +149,7 @@ wandb.config.batch_size = batch_size
 
 # Magic
 train_loss = 0
-labels =list(train_generator.class_indices.keys())
+
 wandb_callback = WandbCallback(monitor='val-loss', mode='max', save_weights_only=False, log_weights=False,
                                log_gradients=False, save_model=False, training_data=None,
                                validation_data=None, labels=labels, data_type='image', predictions=32,
@@ -158,7 +160,7 @@ wandb_callback = WandbCallback(monitor='val-loss', mode='max', save_weights_only
 train_loss = model.fit_generator(train_generator, steps_per_epoch=100, epochs=epochs, verbose=2, callbacks=[wandb_callback],
                                  validation_data=val_generator, validation_steps=10, validation_freq=1,
                                  class_weight=None,
-                                 max_queue_size=1, workers=1, use_multiprocessing=False, shuffle=True,
+                                 max_queue_size=100, workers=4, use_multiprocessing=False, shuffle=True,
                                  initial_epoch=0)  # (x=train_generator, epochs=callbacks=[WandbCallback()])
 print(train_loss.params)
 
