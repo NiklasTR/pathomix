@@ -72,14 +72,14 @@ def create_test_set(base_dir=os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_ca
         move_files(random_list, source_dir, target_dir, l)
 
 if __name__ == '__main__':
-
+    '''
     parser = argparse.ArgumentParser(description='Give parameters for tumor detection fine tuning')
-    parser.add_argument("learning-rate", help="")
-    parser.add_argument("decay", help="")
-    parser.add_argument("momentum", help="")
+    parser.add_argument("--learning-rate", help="")
+    parser.add_argument("--decay", help="")
+    parser.add_argument("--momentum", help="")
 
     args = parser.parse_args()
-
+    '''
     lr = args.learning_rate
     decay = args.decay
     momentum = args.momentum
