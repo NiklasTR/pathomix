@@ -101,7 +101,7 @@ optimizing_parameters = dict(
 
 timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
 debug = False
-if not debug:
+if debug:
     wandb.init(name=timestr, config=optimizing_parameters, project="first_aws")
 else:
     wandb.init(name=timestr, config=optimizing_parameters, project="tumor_detection_full_size")
@@ -257,7 +257,7 @@ if __name__ == '__main__':
         l.trainable = False
 
     x = model.output
-    pred = Dense(len(hp_dict["labels"]), activation='sigmoid')(x)
+    pred = Dense(len(hp_dict["labels"]), activation='softmax')(x)
 
     my_model = Model(inputs=model.input, outputs=pred)
 

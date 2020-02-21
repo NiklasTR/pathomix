@@ -20,6 +20,7 @@ pip install efficientnet
 sudo apt-get install openslide-tools	
 pip install Pillow
 pip install openslide-python
+pip install --upgrade scikit-image
 
 wandb login
 
