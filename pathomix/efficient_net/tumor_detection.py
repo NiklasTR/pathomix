@@ -193,7 +193,7 @@ if __name__ == '__main__':
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
-        epochs=5,
+        epochs=2,
         nesterov=False,
         labels=list(train_generator.class_indices.keys()),
         step_per_epoch=len(train_generator)//devide_by,
