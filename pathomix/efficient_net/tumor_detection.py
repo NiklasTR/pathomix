@@ -3,8 +3,8 @@ import pandas as pd
 import shutil
 import random
 import numpy as np
-import argparse
 import time
+import multiprocessing
 from keras.preprocessing.image import ImageDataGenerator
 from keras import optimizers
 from keras.models import Model
@@ -240,7 +240,7 @@ if __name__ == '__main__':
         validation_freq=1,
         class_weight=None,
         max_queue_size=100,
-        workers=4,
+        workers=multiprocessing.cpu_count(),
         use_multiprocessing=False,
         shuffle=True,
         initial_epoch=0
