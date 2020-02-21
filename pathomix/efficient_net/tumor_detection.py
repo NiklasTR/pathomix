@@ -146,6 +146,22 @@ if __name__ == '__main__':
         y_col='label'
     )
 
+    if debug:
+        hyperparameter_dict = dict(
+            seed=42,
+            batch_size=8,
+            input_size=(224, 224),
+            crop_length=None
+        )
+    else:
+        hyperparameter_dict = dict(
+            seed=42,
+            batch_size=64,
+            input_size=(512, 512),
+            crop_length=456
+        )
+
+
     print('create data generators')
     train_datagen = ImageDataGenerator(
         featurewise_center=data_gen_dict["featurewise_center"],
@@ -172,24 +188,8 @@ if __name__ == '__main__':
         vertical_flip=data_gen_dict["vertical_flip_val"],
         fill_mode=data_gen_dict["fill_mode_val"],
         cval=data_gen_dict["cval_val"],
+        preprocessing_function=random_crop(img, hyperparameter_dict['crop_length'])
     )
-
-
-    if debug:
-        hyperparameter_dict = dict(
-            seed=42,
-            batch_size=8,
-            input_size=(224, 224),
-            crop_length=None
-        )
-    else:
-        hyperparameter_dict = dict(
-            seed=42,
-            batch_size=64,
-            input_size=(512, 512),
-            crop_length=456
-        )
-
 
     df_total = create_data_frame(base_dir=data_dir)
     kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=hyperparameter_dict["seed"])
@@ -224,13 +224,16 @@ if __name__ == '__main__':
 
     labels = list(train_generator_temp.class_indices.keys())
 
+    '''
     if debug:
         train_generator = train_generator_temp
         val_generator = val_generator_temp
     else:
         train_generator = crop_generator(train_generator_temp, hyperparameter_dict["crop_length"])
         val_generator = crop_generator(val_generator_temp, hyperparameter_dict["crop_length"])
-
+    '''
+    train_generator = train_generator_temp
+    val_generator = val_generator_temp
 
     devide_by = 5
     hp_dict = dict(
@@ -247,7 +250,7 @@ if __name__ == '__main__':
         class_weight=None,
         max_queue_size=multiprocessing.cpu_count(),
         workers=multiprocessing.cpu_count(),
-        use_multiprocessing=True,
+        use_multiprocessing=False,
         shuffle=True,
         initial_epoch=0
     )
