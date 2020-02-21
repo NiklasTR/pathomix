@@ -3,6 +3,8 @@ import pandas as pd
 import shutil
 import random
 import numpy as np
+import argparse
+import time
 from keras.preprocessing.image import ImageDataGenerator
 from keras import optimizers
 from keras.models import Model
@@ -69,106 +71,192 @@ def create_test_set(base_dir=os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_ca
         random_list = pick_random_sample(total_list, proportion=0.2)
         move_files(random_list, source_dir, target_dir, l)
 
+if __name__ == '__main__':
 
-width_shift_range = 0.2
-seed = 42
-batch_size = 8
-input_size = (224, 224)
-# input_size = (456,456)
+    parser = argparse.ArgumentParser(description='Give parameters for tumor detection fine tuning')
+    parser.add_argument("learning-rate", help="")
+    parser.add_argument("decay", help="")
+    parser.add_argument("momentum", help="")
+
+    args = parser.parse_args()
+
+    lr = args.learning_rate
+    decay = args.decay
+    momentum = args.momentum
+
+    base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_cancer_detection')
+    data_dir = os.path.join(base_dir, 'train')
+    vis_dir = os.path.join(base_dir, 'visualize')
+
+    data_gen_dict = dict(
+        featurewise_center=False,
+        samplewise_center=True,
+        featurewise_std_normalization=False,
+        samplewise_std_normalization=True,
+        rotation_range_train=90,
+        width_shift_range_train=0.2,
+        height_shift_range_train=0.2,
+        horizontal_flip_train=True,
+        vertical_flip_train=True,
+        fill_mode_train='constant',
+        cval_train=0,
+        rotation_range_val=0,
+        width_shift_range_val=0,
+        height_shift_range_val=0,
+        horizontal_flip_val=False,
+        vertical_flip_val=False,
+        fill_mode_val='constant',
+        cval_val=0,
+        class_mode='categorical',
+        x_col='relative_path',
+        y_col='label'
+    )
+
+    print('create data generators')
+    train_datagen = ImageDataGenerator(
+        featurewise_center=data_gen_dict["featurewise_center"],
+        samplewise_center=data_gen_dict["samplewise_center"],
+        featurewise_std_normalization=data_gen_dict["featurewise_std_normalization"],
+        samplewise_std_normalization=data_gen_dict["samplewise_std_normalization"],
+        rotation_range=data_gen_dict["rotation_range_train"],
+        width_shift_range=data_gen_dict["width_shift_range_train"],
+        height_shift_range=data_gen_dict["height_shift_range_train"],
+        horizontal_flip=data_gen_dict["horizontal_flip_train"],
+        vertical_flip=data_gen_dict["vertical_flip_train"],
+        fill_mode=data_gen_dict["fill_mode_train"],
+        cval=data_gen_dict["cval_train"]
+    )
+    val_datagen = ImageDataGenerator(
+        featurewise_center=data_gen_dict["featurewise_center"],
+        samplewise_center=data_gen_dict["samplewise_center"],
+        featurewise_std_normalization=data_gen_dict["featurewise_std_normalization"],
+        samplewise_std_normalization=data_gen_dict["samplewise_std_normalization"],
+        rotation_range=data_gen_dict["rotation_range_val"],
+        width_shift_range=data_gen_dict["width_shift_range_val"],
+        height_shift_range=data_gen_dict["height_shift_range_val"],
+        horizontal_flip=data_gen_dict["horizontal_flip_val"],
+        vertical_flip=data_gen_dict["vertical_flip_val"],
+        fill_mode=data_gen_dict["fill_mode_val"],
+        cval=data_gen_dict["cval_val"],
+    )
 
 
-base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_cancer_detection')
-data_dir = os.path.join(base_dir, 'train')
-vis_dir = os.path.join(base_dir, 'visualize')
+    hyperparameter_dict = dict(
+        seed=42,
+        batch_size=8,
+        input_size=(224, 224)
+    )
 
-train_datagen = ImageDataGenerator(
-    featurewise_center=False,
-    samplewise_center=True,
-    featurewise_std_normalization=False,
-    samplewise_std_normalization=True,
-    rotation_range=90,
-    width_shift_range=width_shift_range,
-    height_shift_range=width_shift_range,
-    horizontal_flip=True,
-    vertical_flip=True,
-    fill_mode='constant',
-    cval=0
-)
-val_datagen = ImageDataGenerator(
-    featurewise_center=False,
-    samplewise_center=True,
-    featurewise_std_normalization=False,
-    samplewise_std_normalization=True,
-    rotation_range=0,
-    width_shift_range=0,
-    height_shift_range=0,
-    horizontal_flip=False,
-    vertical_flip=False,
-    fill_mode='constant',
-    cval=0
-)
+    timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
 
-df_total = create_data_frame(base_dir=data_dir)
-kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-# get indices for train and validation
-train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
-df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
+    wandb.init(name=timestr, project="first_aws")
 
-train_generator = train_datagen.flow_from_dataframe(df_train, data_dir, x_col='relative_path', y_col='label',
+    df_total = create_data_frame(base_dir=data_dir)
+    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=hyperparameter_dict["seed"])
+    # get indices for train and validation
+    train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
+    df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
+
+    print('create training batch generators')
+    train_generator = train_datagen.flow_from_dataframe(df_train, data_dir,
+                                                        x_col=data_gen_dict["x_col"],
+                                                        y_col=data_gen_dict["y_col"],
+                                                        weight_col=None,
+                                                        target_size=hyperparameter_dict["input_size"],
+                                                        class_mode=data_gen_dict["class_mode"],
+                                                        batch_size=hyperparameter_dict["batch_size"],
+                                                        shuffle=True,
+                                                        seed=hyperparameter_dict["seed"],
+                                                        save_to_dir=None,
+                                                        save_prefix="aug_test_")
+
+    val_generator = val_datagen.flow_from_dataframe(df_val, data_dir,
+                                                    x_col=data_gen_dict["x_col"],
+                                                    y_col=data_gen_dict["y_col"],
                                                     weight_col=None,
-                                                    target_size=input_size, class_mode='categorical',
-                                                    batch_size=batch_size,
-                                                    shuffle=True, seed=seed, save_to_dir=None,
-                                                    save_prefix="aug_test_")
-val_generator = val_datagen.flow_from_dataframe(df_val, data_dir, x_col='relative_path', y_col='label', weight_col=None,
-                                                target_size=input_size, class_mode='categorical', batch_size=batch_size,
-                                                shuffle=True, seed=seed, save_to_dir=None,
-                                                save_prefix="aug_test_val")
+                                                    target_size=hyperparameter_dict["input_size"],
+                                                    class_mode=data_gen_dict["class_mode"],
+                                                    batch_size=hyperparameter_dict["batch_size"],
+                                                    shuffle=True,
+                                                    seed=hyperparameter_dict["seed"],
+                                                    save_to_dir=None,
+                                                    save_prefix="aug_test_val")
+    hp_dict = dict(
+        seed=hyperparameter_dict["seed"],
+        batch_size=hyperparameter_dict["batch_size"],
+        input_size=hyperparameter_dict["input_size"],
+        epochs=10,
+        lr=lr,
+        decay=decay,
+        momentum=momentum,
+        nesterov=False,
+        labels=list(train_generator.class_indices.keys()),
+        step_per_epoch=len(train_generator)//10,
+        verbose=2,
+        validation_steps=len(val_generator)//10,
+        validation_freq=1,
+        class_weight=None,
+        max_queue_size=100,
+        workers=4,
+        use_multiprocessing=False,
+        shuffle=False,
+        initial_epoch=0
+    )
 
-epochs = 10
-lr = 0.01
-decay = 1e-6
-momentum = 0.0
-nesterov = False
+    print("load model")
+    # load model with pretrained- weights
+    model = efn.EfficientNetB0(weights='imagenet')
+    model.layers.pop()
 
-labels =list(train_generator.class_indices.keys())
+    # freeze all layers in pretrained model
+    for l in model.layers:
+        l.trainable = False
 
-# load model with pretrained- weights
-model = efn.EfficientNetB0(weights='imagenet')
-x = model.output
-pred = Dense(len(labels), activation='sigmoid')(x)
+    x = model.output
+    pred = Dense(len(hp_dict["labels"]), activation='sigmoid')(x)
 
-model = Model(inputs=model.input, outputs=pred)
+    my_model = Model(inputs=model.input, outputs=pred)
 
-sgd = optimizers.SGD(lr=lr, momentum=momentum, nesterov=nesterov, decay=decay)
-model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
-
-wandb.init(name="first_run", project="first_aws")
-wandb.config.epochs = epochs
-wandb.config.batch_size = batch_size
-
-# Magic
-train_loss = 0
-
-wandb_callback = WandbCallback(monitor='val-loss', mode='max', save_weights_only=False, log_weights=False,
-                               log_gradients=False, save_model=False, training_data=None,
-                               validation_data=None, labels=labels, data_type='image', predictions=32,
-                               generator=val_generator)
-# wand_callbacks = WandbCallback(data_type="image", labels=labels)
+    sgd = optimizers.SGD(lr=hp_dict["lr"], momentum=hp_dict["momentum"], nesterov=hp_dict["nesterov"],
+                         decay=hp_dict["decay"])
+    print('complile model')
+    #model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
+    my_model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
 
 
-train_loss = model.fit_generator(train_generator, steps_per_epoch=100, epochs=epochs, verbose=2, callbacks=[wandb_callback],
-                                 validation_data=val_generator, validation_steps=10, validation_freq=1,
-                                 class_weight=None,
-                                 max_queue_size=100, workers=4, use_multiprocessing=False, shuffle=True,
-                                 initial_epoch=0)  # (x=train_generator, epochs=callbacks=[WandbCallback()])
-print(train_loss.params)
 
-'''
-for epoch in range(1, wandb.config.epochs + 1):
+    '''
+    wandb_callback = WandbCallback(monitor='val_loss', mode='max', save_weights_only=False, log_weights=False,
+                                   log_gradients=False, save_model=False, training_data=None,
+                                   validation_data=None, labels=hp_dict["labels"], data_type="image", predictions=32,
+                                   generator=val_generator)
+    '''
+    wandb_callback = WandbCallback(monitor='val_loss', mode='max', save_weights_only=False, log_weights=False,
+                                   log_gradients=False, save_model=False, training_data=None,
+                                   validation_data=None, labels=None, data_type=None, predictions=16,
+                                   generator=val_generator)
+
+    all_paras_dict = {**data_gen_dict, **hp_dict}
+    wandb.config.update(params=all_paras_dict)
+
+    # wand_callbacks = WandbCallback(data_type="image", labels=labels)
+    print('start training')
+    results = my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
+                                     epochs=hp_dict["epochs"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
+                                     validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
+                                     validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
+                                     max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
+                                     use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
+                                     initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
+    print(results.params)
+
+    wandb.log({"val_loss": results.params["val_accuracy"]})
+
+    '''
+    for epoch in range(1, wandb.config.epochs + 1):
     print(epoch)
     for batch_idx in range(20): #range(len(train_generator)):
         x, y = train_generator.next()
         train_loss = model.train_on_batch(x, y, sample_weight=None, class_weight=None, reset_metrics=True)
         print(train_loss)
-'''
+    '''
