@@ -77,6 +77,10 @@ optimizing_parameters = dict(
     momentum=0.0
 )
 
+timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
+
+wandb.init(name=timestr, config=optimizing_parameters, project="first_aws")
+
 if __name__ == '__main__':
     '''
     parser = argparse.ArgumentParser(description='Give parameters for tumor detection fine tuning')
@@ -152,9 +156,6 @@ if __name__ == '__main__':
         input_size=(224, 224)
     )
 
-    timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
-
-    wandb.init(name=timestr, project="first_aws")
 
     df_total = create_data_frame(base_dir=data_dir)
     kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=hyperparameter_dict["seed"])
