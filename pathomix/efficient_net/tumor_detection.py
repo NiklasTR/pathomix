@@ -204,7 +204,7 @@ if __name__ == '__main__':
         max_queue_size=100,
         workers=4,
         use_multiprocessing=False,
-        shuffle=False,
+        shuffle=True,
         initial_epoch=0
     )
 
