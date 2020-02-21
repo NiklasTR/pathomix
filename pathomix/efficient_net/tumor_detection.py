@@ -198,7 +198,7 @@ if __name__ == '__main__':
     df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
 
     print('create training batch generators')
-    train_generator = train_datagen.flow_from_dataframe(df_train, data_dir,
+    train_generator_temp = train_datagen.flow_from_dataframe(df_train, data_dir,
                                                         x_col=data_gen_dict["x_col"],
                                                         y_col=data_gen_dict["y_col"],
                                                         weight_col=None,
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                                                         save_to_dir=None,
                                                         save_prefix="aug_test_")
 
-    val_generator = val_datagen.flow_from_dataframe(df_val, data_dir,
+    val_generator_temp = val_datagen.flow_from_dataframe(df_val, data_dir,
                                                     x_col=data_gen_dict["x_col"],
                                                     y_col=data_gen_dict["y_col"],
                                                     weight_col=None,
@@ -222,11 +222,15 @@ if __name__ == '__main__':
                                                     save_to_dir=None,
                                                     save_prefix="aug_test_val")
 
-    labels = list(train_generator.class_indices.keys())
+    labels = list(train_generator_temp.class_indices.keys())
 
-    if not debug:
-        train_generator = crop_generator(train_generator, hyperparameter_dict["crop_length"])
-        val_generator = crop_generator(val_generator, hyperparameter_dict["crop_length"])
+    if debug:
+        train_generator = train_generator_temp
+        val_generator = val_generator_temp
+    else:
+        train_generator = crop_generator(train_generator_temp, hyperparameter_dict["crop_length"])
+        val_generator = crop_generator(val_generator_temp, hyperparameter_dict["crop_length"])
+
 
     devide_by = 5
     hp_dict = dict(
@@ -235,10 +239,10 @@ if __name__ == '__main__':
         input_size=hyperparameter_dict["input_size"],
         epochs=10,
         nesterov=False,
-        labels=labels,
-        step_per_epoch=len(train_generator)//devide_by,
+        labels=list(train_generator_temp.class_indices.keys()),
+        step_per_epoch=len(train_generator_temp)//devide_by,
         verbose=2,
-        validation_steps=len(val_generator),
+        validation_steps=len(val_generator_temp),
         validation_freq=1,
         class_weight=None,
         max_queue_size=100,
