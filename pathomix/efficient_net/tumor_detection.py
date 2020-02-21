@@ -247,7 +247,7 @@ if __name__ == '__main__':
         class_weight=None,
         max_queue_size=100,
         workers=multiprocessing.cpu_count(),
-        use_multiprocessing=False,
+        use_multiprocessing=True,
         shuffle=True,
         initial_epoch=0
     )
