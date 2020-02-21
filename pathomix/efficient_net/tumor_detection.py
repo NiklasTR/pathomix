@@ -240,8 +240,8 @@ if __name__ == '__main__':
                                    generator=val_generator)
 
     all_paras_dict_determined = {**data_gen_dict, **hp_dict}
-    all_params_dict = {**all_paras_dict_determined, **optimizing_parameters}
-    wandb.config.update(params=all_params_dict)
+    #all_params_dict = {**all_paras_dict_determined, **optimizing_parameters}
+    wandb.config.update(params=all_paras_dict_determined)
 
     # wand_callbacks = WandbCallback(data_type="image", labels=labels)
     print('start training')
