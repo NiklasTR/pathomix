@@ -188,7 +188,7 @@ if __name__ == '__main__':
                                                     save_to_dir=None,
                                                     save_prefix="aug_test_val")
 
-    devide_by = 100
+    devide_by = 1
     hp_dict = dict(
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
