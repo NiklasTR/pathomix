@@ -127,9 +127,9 @@ if __name__ == '__main__':
         samplewise_center=True,
         featurewise_std_normalization=False,
         samplewise_std_normalization=True,
-        rotation_range_train=90,
-        width_shift_range_train=0.2,
-        height_shift_range_train=0.2,
+        rotation_range_train=0,
+        width_shift_range_train=0,
+        height_shift_range_train=0,
         horizontal_flip_train=True,
         vertical_flip_train=True,
         fill_mode_train='constant',
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     else:
         hyperparameter_dict = dict(
             seed=42,
-            batch_size=32,
+            batch_size=64,
             input_size=(512, 512),
             crop_length=456
         )
