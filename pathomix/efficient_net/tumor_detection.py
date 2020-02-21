@@ -188,17 +188,17 @@ if __name__ == '__main__':
                                                     save_to_dir=None,
                                                     save_prefix="aug_test_val")
 
-    devide_by = 1
+    devide_by = 5
     hp_dict = dict(
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
-        epochs=2,
+        epochs=10,
         nesterov=False,
         labels=list(train_generator.class_indices.keys()),
         step_per_epoch=len(train_generator)//devide_by,
         verbose=2,
-        validation_steps=len(val_generator)//devide_by,
+        validation_steps=len(val_generator),
         validation_freq=1,
         class_weight=None,
         max_queue_size=100,
