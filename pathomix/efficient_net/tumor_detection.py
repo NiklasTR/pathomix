@@ -245,7 +245,7 @@ if __name__ == '__main__':
         validation_steps=len(val_generator_temp)//devide_by,
         validation_freq=1,
         class_weight=None,
-        max_queue_size=multiprocessing.cpu_count()*3,
+        max_queue_size=multiprocessing.cpu_count(),
         workers=multiprocessing.cpu_count(),
         use_multiprocessing=True,
         shuffle=True,
