@@ -254,7 +254,10 @@ if __name__ == '__main__':
 
     print("load model")
     # load model with pretrained- weights
-    model = efn.EfficientNetB0(weights='imagenet')
+    if debug:
+        model = efn.EfficientNetB0(weights='imagenet')
+    else:
+        model = efn.EfficientNetB6(weights='imagenet')
     model.layers.pop()
 
     # freeze all layers in pretrained model
