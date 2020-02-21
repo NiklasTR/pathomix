@@ -187,6 +187,8 @@ if __name__ == '__main__':
                                                     seed=hyperparameter_dict["seed"],
                                                     save_to_dir=None,
                                                     save_prefix="aug_test_val")
+
+    devide_by = 100
     hp_dict = dict(
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
@@ -194,9 +196,9 @@ if __name__ == '__main__':
         epochs=10,
         nesterov=False,
         labels=list(train_generator.class_indices.keys()),
-        step_per_epoch=len(train_generator)//10,
+        step_per_epoch=len(train_generator)//devide_by,
         verbose=2,
-        validation_steps=len(val_generator)//10,
+        validation_steps=len(val_generator)//devide_by,
         validation_freq=1,
         class_weight=None,
         max_queue_size=100,
