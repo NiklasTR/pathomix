@@ -100,8 +100,11 @@ optimizing_parameters = dict(
 )
 
 timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
-
-wandb.init(name=timestr, config=optimizing_parameters, project="first_aws")
+debug = False
+if not debug:
+    wandb.init(name=timestr, config=optimizing_parameters, project="first_aws")
+else:
+    wandb.init(name=timestr, config=optimizing_parameters, project="tumor_detection_full_size")
 
 if __name__ == '__main__':
     '''
@@ -115,7 +118,6 @@ if __name__ == '__main__':
     decay = args.decay
     momentum = args.momentum
     '''
-    debug = False
     base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_cancer_detection')
     data_dir = os.path.join(base_dir, 'train')
     vis_dir = os.path.join(base_dir, 'visualize')
