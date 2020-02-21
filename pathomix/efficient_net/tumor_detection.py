@@ -219,8 +219,8 @@ if __name__ == '__main__':
 
     my_model = Model(inputs=model.input, outputs=pred)
 
-    sgd = optimizers.SGD(learning_rate=hp_dict["lr"], momentum=hp_dict["momentum"], nesterov=hp_dict["nesterov"],
-                         decay=hp_dict["decay"])
+    sgd = optimizers.SGD(learning_rate=optimizing_parameters["lr"], momentum=optimizing_parameters["momentum"],
+                         nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
     print('complile model')
     #model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
     my_model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
