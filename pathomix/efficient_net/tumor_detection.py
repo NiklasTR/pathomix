@@ -73,8 +73,8 @@ def create_test_set(base_dir=os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_ca
 
 optimizing_parameters = dict(
     lr=0.1,
-    decay=0.001,
-    momentum=0.0
+    decay=1e-6,
+    momentum=0.9
 )
 
 timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
