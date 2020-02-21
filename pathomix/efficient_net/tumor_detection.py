@@ -79,11 +79,10 @@ if __name__ == '__main__':
     parser.add_argument("--momentum", help="")
 
     args = parser.parse_args()
-    '''
-    lr = args.learning_rate
+    learning_rate = args.learning_rate
     decay = args.decay
     momentum = args.momentum
-
+    '''
     base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_cancer_detection')
     data_dir = os.path.join(base_dir, 'train')
     vis_dir = os.path.join(base_dir, 'visualize')
@@ -186,7 +185,7 @@ if __name__ == '__main__':
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
         epochs=10,
-        lr=lr,
+        learning_rate=learning_rate,
         decay=decay,
         momentum=momentum,
         nesterov=False,
@@ -217,7 +216,7 @@ if __name__ == '__main__':
 
     my_model = Model(inputs=model.input, outputs=pred)
 
-    sgd = optimizers.SGD(lr=hp_dict["lr"], momentum=hp_dict["momentum"], nesterov=hp_dict["nesterov"],
+    sgd = optimizers.SGD(learning_rate=hp_dict["learning_rate"], momentum=hp_dict["momentum"], nesterov=hp_dict["nesterov"],
                          decay=hp_dict["decay"])
     print('complile model')
     #model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
