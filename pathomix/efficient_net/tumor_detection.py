@@ -157,7 +157,7 @@ if __name__ == '__main__':
         hyperparameter_dict = dict(
             seed=42,
             batch_size=64,
-            input_size=(512, 512),
+            input_size=(456, 456),
             crop_length=456
         )
 
