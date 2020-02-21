@@ -257,7 +257,7 @@ if __name__ == '__main__':
     if debug:
         model = efn.EfficientNetB0(weights='imagenet')
     else:
-        model = efn.EfficientNetB6(weights='imagenet')
+        model = efn.EfficientNetB5(weights='imagenet')
     model.layers.pop()
 
     # freeze all layers in pretrained model
