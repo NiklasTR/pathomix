@@ -222,6 +222,8 @@ if __name__ == '__main__':
                                                     save_to_dir=None,
                                                     save_prefix="aug_test_val")
 
+    labels = list(train_generator.class_indices.keys())
+
     if not debug:
         train_generator = crop_generator(train_generator, hyperparameter_dict["crop_length"])
         val_generator = crop_generator(val_generator, hyperparameter_dict["crop_length"])
@@ -233,7 +235,7 @@ if __name__ == '__main__':
         input_size=hyperparameter_dict["input_size"],
         epochs=10,
         nesterov=False,
-        labels=list(train_generator.class_indices.keys()),
+        labels=labels,
         step_per_epoch=len(train_generator)//devide_by,
         verbose=2,
         validation_steps=len(val_generator),
