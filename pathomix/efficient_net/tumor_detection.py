@@ -71,6 +71,12 @@ def create_test_set(base_dir=os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_ca
         random_list = pick_random_sample(total_list, proportion=0.2)
         move_files(random_list, source_dir, target_dir, l)
 
+optimizing_parameters = dict(
+    lr=0.1,
+    decay=0.001,
+    momentum=0.0
+)
+
 if __name__ == '__main__':
     '''
     parser = argparse.ArgumentParser(description='Give parameters for tumor detection fine tuning')
@@ -185,9 +191,6 @@ if __name__ == '__main__':
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
         epochs=10,
-        lr=0.1,
-        decay=0.1,
-        momentum=0.1,
         nesterov=False,
         labels=list(train_generator.class_indices.keys()),
         step_per_epoch=len(train_generator)//10,
@@ -235,8 +238,9 @@ if __name__ == '__main__':
                                    validation_data=None, labels=None, data_type=None, predictions=16,
                                    generator=val_generator)
 
-    all_paras_dict = {**data_gen_dict, **hp_dict}
-    wandb.config.update(params=all_paras_dict)
+    all_paras_dict_determined = {**data_gen_dict, **hp_dict}
+    all_params_dict = {**all_paras_dict_determined, **optimizing_parameters}
+    wandb.config.update(params=all_params_dict)
 
     # wand_callbacks = WandbCallback(data_type="image", labels=labels)
     print('start training')
@@ -249,7 +253,7 @@ if __name__ == '__main__':
                                      initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
     print(results.params)
 
-    wandb.log({"val_loss": results.params["val_accuracy"]})
+    #wandb.log({"val_loss": results.params["val_accuracy"]})
 
     '''
     for epoch in range(1, wandb.config.epochs + 1):
