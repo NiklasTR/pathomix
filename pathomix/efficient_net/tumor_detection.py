@@ -185,7 +185,7 @@ if __name__ == '__main__':
     else:
         hyperparameter_dict = dict(
             seed=42,
-            batch_size=8,
+            batch_size=32,
             input_size=(512, 512),
             crop_length=456
         )
@@ -242,7 +242,7 @@ if __name__ == '__main__':
         labels=list(train_generator_temp.class_indices.keys()),
         step_per_epoch=len(train_generator_temp)//devide_by,
         verbose=2,
-        validation_steps=len(val_generator_temp),
+        validation_steps=len(val_generator_temp)//devide_by,
         validation_freq=1,
         class_weight=None,
         max_queue_size=100,
@@ -285,7 +285,7 @@ if __name__ == '__main__':
     '''
     wandb_callback = WandbCallback(monitor='val_loss', mode='max', save_weights_only=False, log_weights=False,
                                    log_gradients=False, save_model=False, training_data=None,
-                                   validation_data=None, labels=None, data_type=None, predictions=16,
+                                   validation_data=None, labels=None, data_type=None, predictions=0,
                                    generator=val_generator)
 
     all_paras_dict_determined = {**data_gen_dict, **hp_dict}
