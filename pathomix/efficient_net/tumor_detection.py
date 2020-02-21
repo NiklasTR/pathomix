@@ -71,7 +71,7 @@ def create_test_set(base_dir=os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_ca
         random_list = pick_random_sample(total_list, proportion=0.2)
         move_files(random_list, source_dir, target_dir, l)
 
-def random_crop(img, random_crop_size):
+def random_crop(img, random_crop_size=456):
     # Note: image_data_format is 'channel_last'
     assert img.shape[2] == 3
     height, width = img.shape[0], img.shape[1]
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         vertical_flip=data_gen_dict["vertical_flip_val"],
         fill_mode=data_gen_dict["fill_mode_val"],
         cval=data_gen_dict["cval_val"],
-        preprocessing_function=random_crop(img, hyperparameter_dict['crop_length'])
+        preprocessing_function=random_crop
     )
 
     df_total = create_data_frame(base_dir=data_dir)
