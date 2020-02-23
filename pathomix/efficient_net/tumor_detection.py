@@ -104,7 +104,7 @@ debug = False
 if debug:
     wandb.init(name=timestr, config=optimizing_parameters, project="first_aws")
 else:
-    wandb.init(name=timestr, config=optimizing_parameters, project="tumor_detection_full_size")
+    wandb.init(name=timestr, config=optimizing_parameters, project="td_no_norm")
 
 if __name__ == '__main__':
     '''
@@ -124,9 +124,9 @@ if __name__ == '__main__':
 
     data_gen_dict = dict(
         featurewise_center=False,
-        samplewise_center=True,
+        samplewise_center=False,
         featurewise_std_normalization=False,
-        samplewise_std_normalization=True,
+        samplewise_std_normalization=False,
         rotation_range_train=0,
         width_shift_range_train=0,
         height_shift_range_train=0,
