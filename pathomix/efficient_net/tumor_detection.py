@@ -191,9 +191,9 @@ if __name__ == '__main__':
 
     data_gen_dict = dict(
         featurewise_center=False,
-        samplewise_center=False,
+        samplewise_center=True,
         featurewise_std_normalization=False,
-        samplewise_std_normalization=False,
+        samplewise_std_normalization=True,
         rotation_range_train=0,
         width_shift_range_train=0,
         height_shift_range_train=0,
