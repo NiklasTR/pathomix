@@ -8,7 +8,7 @@ import multiprocessing
 from keras.preprocessing.image import ImageDataGenerator
 from keras import optimizers
 from keras.models import Model
-from keras.layers import Dense
+from keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from keras.utils import Sequence, to_categorical
 from sklearn.model_selection import StratifiedKFold
 import efficientnet.keras as efn
@@ -344,6 +344,8 @@ if __name__ == '__main__':
         l.trainable = False
 
     x = model.output
+    x = GlobalAveragePooling2D()(x)
+    x = Dropout(rate=0.2)(x)
     pred = Dense(len(hp_dict["labels"]), activation='softmax')(x)
 
     my_model = Model(inputs=model.input, outputs=pred)
