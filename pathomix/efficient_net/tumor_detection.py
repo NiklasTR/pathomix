@@ -307,7 +307,7 @@ if __name__ == '__main__':
             'data_dir': data_dir,
             'dim': hyperparameter_dict['input_size'],
             'n_channels': 3,
-            'shuffle': hyperparameter_dict['shuffle']
+            'shuffle': True
         }
         train_generator = DataLoader(data_frame=df_train, **params)
         step_per_epoch = train_generator.__len__()//devide_by
