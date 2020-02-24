@@ -9,8 +9,11 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras import optimizers
 from keras.models import Model
 from keras.layers import Dense
+from keras.utils import Sequence, to_categorical
 from sklearn.model_selection import StratifiedKFold
 import efficientnet.keras as efn
+from skimage.transform import resize
+import imageio
 
 import wandb
 from wandb.keras import WandbCallback
@@ -25,6 +28,7 @@ def create_data_frame(base_dir):
                 relative_path = os.path.join('.', dir_name, file)
                 data_list.append({"relative_path": relative_path, "label": os.path.basename(root)})
     data_frame = pd.DataFrame(data_list)
+    data_frame.loc[:, ('num_label')] = data_frame.label.astype('category').cat.codes
     return data_frame
 
 
@@ -93,6 +97,71 @@ def crop_generator(batches, crop_length):
         yield (batch_crops, batch_y)
 
 
+
+class DataLoader(Sequence):
+
+    def __init__(self, data_frame, batch_size, data_dir, dim=(456,456), n_channels=3, shuffle=True):
+        self.data_frame = data_frame
+        self.list_IDs = list(self.data_frame.index)
+        self.labels = list(self.data_frame['num_label'])
+        self.n_classes = len(self.data_frame['label'].unique())
+        self.dim = dim
+        self.n_channels = n_channels
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.data_dir = data_dir
+        self.load_data_set()
+        self.on_epoch_end()
+
+    def load_data_set(self):
+        data_list = []
+        for fp in self.data_frame['relative_path']:
+            file_path = os.path.join(self.data_dir, fp)
+            # cut to relevant size
+            file = imageio.imread(file_path)[:self.dim[0],:self.dim[1]]
+            data_list.append(file)
+        self.data = np.array(data_list)
+
+
+    def convert_labels_to_numbers(self):
+        df_train.label.astype('category').cat.codes
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.list_IDs))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __len__(self):
+        return int(np.ceil(len(self.list_IDs) / float(self.batch_size)))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+
+        # Generate data
+        X, y = self.__data_generation(indexes)
+
+        return X, y
+
+    def __data_generation(self, indexes):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+        X = np.empty((self.batch_size, *self.dim, self.n_channels))
+        y = np.empty((self.batch_size), dtype=int)
+
+        # Generate data
+        for idx, ID in enumerate(indexes):
+            # Store sample
+            X[idx,] = self.data[ID]
+
+            # Store class
+            y[idx] = self.labels[ID]
+
+        return X, to_categorical(y, num_classes=self.n_classes)
+
+
 optimizing_parameters = dict(
     lr=0.1,
     decay=1e-6,
@@ -118,6 +187,7 @@ if __name__ == '__main__':
     decay = args.decay
     momentum = args.momentum
     '''
+
     base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_cancer_detection')
     data_dir = os.path.join(base_dir, 'train')
     vis_dir = os.path.join(base_dir, 'visualize')
@@ -143,7 +213,8 @@ if __name__ == '__main__':
         cval_val=0,
         class_mode='categorical',
         x_col='relative_path',
-        y_col='label'
+        y_col='label',
+        do_augmentation=False,
     )
 
     if debug:
@@ -161,46 +232,57 @@ if __name__ == '__main__':
             crop_length=456
         )
 
-
-    print('create data generators')
-    train_datagen = ImageDataGenerator(
-        featurewise_center=data_gen_dict["featurewise_center"],
-        samplewise_center=data_gen_dict["samplewise_center"],
-        featurewise_std_normalization=data_gen_dict["featurewise_std_normalization"],
-        samplewise_std_normalization=data_gen_dict["samplewise_std_normalization"],
-        rotation_range=data_gen_dict["rotation_range_train"],
-        width_shift_range=data_gen_dict["width_shift_range_train"],
-        height_shift_range=data_gen_dict["height_shift_range_train"],
-        horizontal_flip=data_gen_dict["horizontal_flip_train"],
-        vertical_flip=data_gen_dict["vertical_flip_train"],
-        fill_mode=data_gen_dict["fill_mode_train"],
-        cval=data_gen_dict["cval_train"]
-    )
-    val_datagen = ImageDataGenerator(
-        featurewise_center=data_gen_dict["featurewise_center"],
-        samplewise_center=data_gen_dict["samplewise_center"],
-        featurewise_std_normalization=data_gen_dict["featurewise_std_normalization"],
-        samplewise_std_normalization=data_gen_dict["samplewise_std_normalization"],
-        rotation_range=data_gen_dict["rotation_range_val"],
-        width_shift_range=data_gen_dict["width_shift_range_val"],
-        height_shift_range=data_gen_dict["height_shift_range_val"],
-        horizontal_flip=data_gen_dict["horizontal_flip_val"],
-        vertical_flip=data_gen_dict["vertical_flip_val"],
-        fill_mode=data_gen_dict["fill_mode_val"],
-        cval=data_gen_dict["cval_val"],
-        preprocessing_function=random_crop
-    )
-
     df_total = create_data_frame(base_dir=data_dir)
     kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=hyperparameter_dict["seed"])
     # get indices for train and validation
     train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
     df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
 
-    #train_datagen.standardize()
+    if data_gen_dict["do_augementation"]:
+        print('create data generators')
+        train_datagen = ImageDataGenerator(
+            featurewise_center=data_gen_dict["featurewise_center"],
+            samplewise_center=data_gen_dict["samplewise_center"],
+            featurewise_std_normalization=data_gen_dict["featurewise_std_normalization"],
+            samplewise_std_normalization=data_gen_dict["samplewise_std_normalization"],
+            rotation_range=data_gen_dict["rotation_range_train"],
+            width_shift_range=data_gen_dict["width_shift_range_train"],
+            height_shift_range=data_gen_dict["height_shift_range_train"],
+            horizontal_flip=data_gen_dict["horizontal_flip_train"],
+            vertical_flip=data_gen_dict["vertical_flip_train"],
+            fill_mode=data_gen_dict["fill_mode_train"],
+            cval=data_gen_dict["cval_train"]
+        )
+        val_datagen = ImageDataGenerator(
+            featurewise_center=data_gen_dict["featurewise_center"],
+            samplewise_center=data_gen_dict["samplewise_center"],
+            featurewise_std_normalization=data_gen_dict["featurewise_std_normalization"],
+            samplewise_std_normalization=data_gen_dict["samplewise_std_normalization"],
+            rotation_range=data_gen_dict["rotation_range_val"],
+            width_shift_range=data_gen_dict["width_shift_range_val"],
+            height_shift_range=data_gen_dict["height_shift_range_val"],
+            horizontal_flip=data_gen_dict["horizontal_flip_val"],
+            vertical_flip=data_gen_dict["vertical_flip_val"],
+            fill_mode=data_gen_dict["fill_mode_val"],
+            cval=data_gen_dict["cval_val"],
+            preprocessing_function=random_crop
+        )
+        #train_datagen.standardize()
 
-    print('create training batch generators')
-    train_generator = train_datagen.flow_from_dataframe(df_train, data_dir,
+        print('create training batch generators')
+        train_generator = train_datagen.flow_from_dataframe(df_train, data_dir,
+                                                            x_col=data_gen_dict["x_col"],
+                                                            y_col=data_gen_dict["y_col"],
+                                                            weight_col=None,
+                                                            target_size=hyperparameter_dict["input_size"],
+                                                            class_mode=data_gen_dict["class_mode"],
+                                                            batch_size=hyperparameter_dict["batch_size"],
+                                                            shuffle=True,
+                                                            seed=hyperparameter_dict["seed"],
+                                                            save_to_dir=None,
+                                                            save_prefix="aug_test_")
+
+        val_generator = val_datagen.flow_from_dataframe(df_val, data_dir,
                                                         x_col=data_gen_dict["x_col"],
                                                         y_col=data_gen_dict["y_col"],
                                                         weight_col=None,
@@ -210,40 +292,46 @@ if __name__ == '__main__':
                                                         shuffle=True,
                                                         seed=hyperparameter_dict["seed"],
                                                         save_to_dir=None,
-                                                        save_prefix="aug_test_")
+                                                        save_prefix="aug_test_val")
 
-    val_generator = val_datagen.flow_from_dataframe(df_val, data_dir,
-                                                    x_col=data_gen_dict["x_col"],
-                                                    y_col=data_gen_dict["y_col"],
-                                                    weight_col=None,
-                                                    target_size=hyperparameter_dict["input_size"],
-                                                    class_mode=data_gen_dict["class_mode"],
-                                                    batch_size=hyperparameter_dict["batch_size"],
-                                                    shuffle=True,
-                                                    seed=hyperparameter_dict["seed"],
-                                                    save_to_dir=None,
-                                                    save_prefix="aug_test_val")
-
-
-
-    devide_by = 5
+        # for hyperparameter tracking
+        devide_by = 5
+        labels = list(train_generator.class_indices.keys())
+        step_per_epoch = len(train_generator) // devide_by
+        validation_steps = len(val_generator)
+    else:
+        devide_by = 5
+        labels= list(df_total['label'].unique())
+        params = {
+            'batch_size': hyperparameter_dict["batch_size"],
+            'data_dir': data_dir,
+            'dim': hyperparameter_dict['input_size'],
+            'n_channels': 3,
+            'shuffle': hyperparameter_dict['shuffle']
+        }
+        train_generator = DataLoader(data_frame=df_train, **params)
+        step_per_epoch = train_generator.__len__()//devide_by
+        val_generator = DataLoader(data_frame=df_val, **params)
+        validation_steps = val_generator.__len__()
     hp_dict = dict(
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
         epochs=10,
         nesterov=False,
-        labels=list(train_generator.class_indices.keys()),
-        step_per_epoch=len(train_generator)//devide_by,
+        labels=labels,
+        step_per_epoch=step_per_epoch,
         verbose=2,
-        validation_steps=len(val_generator),
+        validation_steps=validation_steps,
         validation_freq=1,
         class_weight=None,
         max_queue_size=multiprocessing.cpu_count()*3,
         workers=multiprocessing.cpu_count(),
         use_multiprocessing=False,
         shuffle=True,
-        initial_epoch=0
+        initial_epoch=0,
+        loss='categorical_crossentropy',
+        metriccs=['categorical_accuracy']
     )
 
     print("load model")
@@ -267,7 +355,7 @@ if __name__ == '__main__':
                          nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
     print('complile model')
     #model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
-    my_model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+    my_model.compile(optimizer=sgd, loss=hp_dict["loss"], metrics=hp_dict["metriccs"])
 
 
 
@@ -288,13 +376,20 @@ if __name__ == '__main__':
 
     # wand_callbacks = WandbCallback(data_type="image", labels=labels)
     print('start training')
-    results = my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
-                                     epochs=hp_dict["epochs"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
-                                     validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
-                                     validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
-                                     max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
-                                     use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
-                                     initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
+    if data_gen_dict['do_augmentation']:
+        results = my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
+                                         epochs=hp_dict["epochs"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
+                                         validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
+                                         validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
+                                         max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
+                                         use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
+                                         initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
+    else:
+        my_model.fit(train_generator,
+                  batch_size=hyperparameter_dict["batch_size"],
+                  epochs=hp_dict["epochs"],
+                  validation_data=val_generator,
+                  shuffle=True)
     print(results.params)
 
     #wandb.log({"val_loss": results.params["val_accuracy"]})
