@@ -211,7 +211,7 @@ if __name__ == '__main__':
         class_mode='categorical',
         x_col='relative_path',
         y_col='label',
-        do_augmentation=False,
+        do_augmentation=True,
     )
 
     if debug:
