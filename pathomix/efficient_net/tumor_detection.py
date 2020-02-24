@@ -314,7 +314,8 @@ if __name__ == '__main__':
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
-        epochs=10,
+        epochs_ul=5,
+        epochs_ft=10,
         nesterov=False,
         labels=labels,
         step_per_epoch=step_per_epoch,
@@ -381,8 +382,8 @@ if __name__ == '__main__':
     # wand_callbacks = WandbCallback(data_type="image", labels=labels)
     print('start training')
     if data_gen_dict['do_augmentation']:
-        results = my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
-                                         epochs=hp_dict["epochs"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
+        my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
+                                         epochs=hp_dict["epochs_ul"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
                                          validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
                                          validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
                                          max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
@@ -394,7 +395,22 @@ if __name__ == '__main__':
                   epochs=hp_dict["epochs"],
                   validation_data=(val_generator.data, to_categorical(val_generator.labels)),
                   shuffle=True)
-    print(results.params)
+
+
+    #
+    # start fine tuning
+    #
+    sgd = optimizers.SGD(learning_rate=optimizing_parameters["lr"], momentum=optimizing_parameters["momentum"],
+                         nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
+    my_model.compile(optimizer=sgd, loss=hp_dict["loss"], metrics=hp_dict["metriccs"])
+
+    my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
+                           epochs=hp_dict["epochs_ft"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
+                           validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
+                           validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
+                           max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
+                           use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
+                           initial_epoch=hp_dict["initial_epoch"])
 
     #wandb.log({"val_loss": results.params["val_accuracy"]})
 
