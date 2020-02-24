@@ -197,6 +197,8 @@ if __name__ == '__main__':
     train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
     df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
 
+    #train_datagen.standardize()
+
     print('create training batch generators')
     train_generator = train_datagen.flow_from_dataframe(df_train, data_dir,
                                                         x_col=data_gen_dict["x_col"],
