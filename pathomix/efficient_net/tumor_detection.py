@@ -103,7 +103,7 @@ class DataLoader(Sequence):
     def __init__(self, data_frame, batch_size, data_dir, dim=(456,456), n_channels=3, shuffle=True):
         self.data_frame = data_frame
         self.list_IDs = list(self.data_frame.index)
-        self.labels = list(self.data_frame['num_label'])
+        self.labels = to_categorical(self.data_frame['num_label'])
         self.n_classes = len(self.data_frame['label'].unique())
         self.dim = dim
         self.n_channels = n_channels
@@ -122,9 +122,6 @@ class DataLoader(Sequence):
             data_list.append(file)
         self.data = np.array(data_list)
 
-
-    def convert_labels_to_numbers(self):
-        df_train.label.astype('category').cat.codes
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
@@ -149,7 +146,7 @@ class DataLoader(Sequence):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
         X = np.empty((self.batch_size, *self.dim, self.n_channels))
-        y = np.empty((self.batch_size), dtype=int)
+        y = np.empty((self.batch_size, self.n_classes), dtype=int)
 
         # Generate data
         for idx, ID in enumerate(indexes):
@@ -157,9 +154,9 @@ class DataLoader(Sequence):
             X[idx,] = self.data[ID]
 
             # Store class
-            y[idx] = self.labels[ID]
+            y[idx,] = self.labels[ID]
 
-        return X, to_categorical(y, num_classes=self.n_classes)
+        return X, y
 
 
 optimizing_parameters = dict(
@@ -337,10 +334,9 @@ if __name__ == '__main__':
     print("load model")
     # load model with pretrained- weights
     if debug:
-        model = efn.EfficientNetB0(weights='imagenet')
+        model = efn.EfficientNetB0(weights='imagenet', include_top=False)
     else:
-        model = efn.EfficientNetB5(weights='imagenet')
-    model.layers.pop()
+        model = efn.EfficientNetB5(weights='imagenet', include_top=False)
 
     # freeze all layers in pretrained model
     for l in model.layers:
@@ -385,10 +381,10 @@ if __name__ == '__main__':
                                          use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
                                          initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
     else:
-        my_model.fit(train_generator,
+        my_model.fit(train_generator.data, to_categorical(train_generator.labels),
                   batch_size=hyperparameter_dict["batch_size"],
                   epochs=hp_dict["epochs"],
-                  validation_data=val_generator,
+                  validation_data=(val_generator.data, to_categorical(val_generator.labels)),
                   shuffle=True)
     print(results.params)
 
