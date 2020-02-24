@@ -328,7 +328,8 @@ if __name__ == '__main__':
         shuffle=True,
         initial_epoch=0,
         loss='categorical_crossentropy',
-        metriccs=['categorical_accuracy']
+        metriccs=['categorical_accuracy'],
+        optimizer='rmsprop'
     )
 
     print("load model")
@@ -347,11 +348,16 @@ if __name__ == '__main__':
 
     my_model = Model(inputs=model.input, outputs=pred)
 
-    sgd = optimizers.SGD(learning_rate=optimizing_parameters["lr"], momentum=optimizing_parameters["momentum"],
-                         nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
     print('complile model')
     #model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
-    my_model.compile(optimizer=sgd, loss=hp_dict["loss"], metrics=hp_dict["metriccs"])
+    if hp_dict['optimizer'] == 'sgd':
+        sgd = optimizers.SGD(learning_rate=optimizing_parameters["lr"], momentum=optimizing_parameters["momentum"],
+                            nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
+        my_model.compile(optimizer=sgd, loss=hp_dict["loss"], metrics=hp_dict["metriccs"])
+    elif hp_dict['optimizer'] == 'rmsprop':
+        my_model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=hp_dict["metriccs"])
+    else:
+        print("invalid optimizer")
 
 
 
