@@ -235,7 +235,7 @@ if __name__ == '__main__':
     train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
     df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
 
-    if data_gen_dict["do_augmentation"]:
+    if data_gen_dict['do_augmentation']:
         print('create data generators')
         train_datagen = ImageDataGenerator(
             featurewise_center=data_gen_dict["featurewise_center"],
