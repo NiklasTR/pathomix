@@ -160,9 +160,9 @@ class DataLoader(Sequence):
 
 
 optimizing_parameters = dict(
-    lr=0.1,
-    decay=1e-6,
-    momentum=0.9
+    lr=1e-6,
+    decay=1e-10,
+    momentum=0.5
 )
 
 timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
