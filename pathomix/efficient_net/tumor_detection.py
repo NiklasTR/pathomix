@@ -262,9 +262,9 @@ if __name__ == '__main__':
     if data_gen_dict['do_augmentation']:
         my_model.fit_generator(train_generator, steps_per_epoch=property_dict["step_per_epoch"],
                                          epochs=hp_dict["epochs_ul"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
-                                         validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
+                                         validation_data=val_generator, validation_steps=property_dict["validation_steps"],
                                          validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
-                                         max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
+                                         max_queue_size=property_dict["max_queue_size"], workers=property_dict["workers"],
                                          use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
                                          initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
     else:
@@ -298,9 +298,9 @@ if __name__ == '__main__':
 
     my_model.fit_generator(train_generator, steps_per_epoch=property_dict["step_per_epoch"],
                            epochs=hp_dict["epochs_ft"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
-                           validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
+                           validation_data=val_generator, validation_steps=property_dict["validation_steps"],
                            validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
-                           max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
+                           max_queue_size=property_dict["max_queue_size"], workers=property_dict["workers"],
                            use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
                            initial_epoch=hp_dict["initial_epoch"])
 
