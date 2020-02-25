@@ -260,7 +260,7 @@ if __name__ == '__main__':
 
     print('start training')
     if data_gen_dict['do_augmentation']:
-        my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
+        my_model.fit_generator(train_generator, steps_per_epoch=property_dict["step_per_epoch"],
                                          epochs=hp_dict["epochs_ul"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
                                          validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
                                          validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
@@ -296,7 +296,7 @@ if __name__ == '__main__':
                                                         save_to_dir=None,
                                                         save_prefix="aug_test_")
 
-    my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
+    my_model.fit_generator(train_generator, steps_per_epoch=property_dict["step_per_epoch"],
                            epochs=hp_dict["epochs_ft"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
                            validation_data=val_generator, validation_steps=hp_dict["validation_steps"],
                            validation_freq=hp_dict["validation_freq"], class_weight=hp_dict["class_weight"],
