@@ -3,6 +3,69 @@ import pandas as pd
 import os
 import random
 import shutil
+from keras.utils import Sequence, to_categorical
+import imageio
+
+
+class DataLoader(Sequence):
+
+    def __init__(self, data_frame, data_dir, batch_size, dim=(456,456), n_channels=3, shuffle=True):
+        self.data_frame = data_frame
+        self.list_IDs = list(self.data_frame.index)
+        self.labels = to_categorical(self.data_frame['num_label'])
+        self.n_classes = len(self.data_frame['label'].unique())
+        self.dim = dim
+        self.n_channels = n_channels
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.data_dir = data_dir
+        self.load_data_set()
+        self.on_epoch_end()
+
+    def load_data_set(self):
+        data_list = []
+        for fp in self.data_frame['relative_path']:
+            file_path = os.path.join(self.data_dir, fp)
+            # cut to relevant size
+            file = imageio.imread(file_path)[:self.dim[0],:self.dim[1]]
+            data_list.append(file)
+        self.data = np.array(data_list)
+
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.list_IDs))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __len__(self):
+        return int(np.ceil(len(self.list_IDs) / float(self.batch_size)))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+
+        # Generate data
+        X, y = self.__data_generation(indexes)
+
+        return X, y
+
+    def __data_generation(self, indexes):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+        X = np.empty((self.batch_size, *self.dim, self.n_channels))
+        y = np.empty((self.batch_size, self.n_classes), dtype=int)
+
+        # Generate data
+        for idx, ID in enumerate(indexes):
+            # Store sample
+            X[idx,] = self.data[ID]
+
+            # Store class
+            y[idx,] = self.labels[ID]
+
+        return X, y
 
 def create_data_frame(base_dir):
     data_list = []
