@@ -224,7 +224,8 @@ if __name__ == '__main__':
     else:
         hyperparameter_dict = dict(
             seed=42,
-            batch_size=64,
+            batch_size_ul=64,
+            batch_size_ft=4,
             input_size=(456, 456),
             crop_length=456
         )
@@ -273,7 +274,7 @@ if __name__ == '__main__':
                                                             weight_col=None,
                                                             target_size=hyperparameter_dict["input_size"],
                                                             class_mode=data_gen_dict["class_mode"],
-                                                            batch_size=hyperparameter_dict["batch_size"],
+                                                            batch_size=hyperparameter_dict["batch_size_ul"],
                                                             shuffle=True,
                                                             seed=hyperparameter_dict["seed"],
                                                             save_to_dir=None,
@@ -285,7 +286,7 @@ if __name__ == '__main__':
                                                         weight_col=None,
                                                         target_size=hyperparameter_dict["input_size"],
                                                         class_mode=data_gen_dict["class_mode"],
-                                                        batch_size=hyperparameter_dict["batch_size"],
+                                                        batch_size=hyperparameter_dict["batch_size_ul"],
                                                         shuffle=True,
                                                         seed=hyperparameter_dict["seed"],
                                                         save_to_dir=None,
@@ -300,7 +301,7 @@ if __name__ == '__main__':
         devide_by = 5
         labels= list(df_total['label'].unique())
         params = {
-            'batch_size': hyperparameter_dict["batch_size"],
+            'batch_size_ul': hyperparameter_dict["batch_size_ul"],
             'data_dir': data_dir,
             'dim': hyperparameter_dict['input_size'],
             'n_channels': 3,
@@ -312,7 +313,7 @@ if __name__ == '__main__':
         validation_steps = val_generator.__len__()
     hp_dict = dict(
         seed=hyperparameter_dict["seed"],
-        batch_size=hyperparameter_dict["batch_size"],
+        batch_size=hyperparameter_dict["batch_size_ul"],
         input_size=hyperparameter_dict["input_size"],
         epochs_ul=3,
         epochs_ft=10,
@@ -350,7 +351,6 @@ if __name__ == '__main__':
     pred = Dense(len(hp_dict["labels"]), activation='softmax')(x)
 
     my_model = Model(inputs=model.input, outputs=pred)
-
     print('complile model')
     #model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
     if hp_dict['optimizer'] == 'sgd':
@@ -380,6 +380,7 @@ if __name__ == '__main__':
     wandb.config.update(params=all_paras_dict_determined)
 
     # wand_callbacks = WandbCallback(data_type="image", labels=labels)
+
     print('start training')
     if data_gen_dict['do_augmentation']:
         my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
@@ -391,7 +392,7 @@ if __name__ == '__main__':
                                          initial_epoch=hp_dict["initial_epoch"])  # (x=train_generator, epochs=callbacks=[WandbCallback()])
     else:
         my_model.fit(train_generator.data, to_categorical(train_generator.labels),
-                  batch_size=hyperparameter_dict["batch_size"],
+                  batch_size=hyperparameter_dict["batch_size_ul"],
                   epochs=hp_dict["epochs"],
                   validation_data=(val_generator.data, to_categorical(val_generator.labels)),
                   shuffle=True)
@@ -400,11 +401,23 @@ if __name__ == '__main__':
     #
     # start fine tuning
     #
-    for i, layer in enumerate(my_model.layers):
+    for layer in my_model.layers:
         layer.trainable = True
     sgd = optimizers.SGD(learning_rate=optimizing_parameters["lr"], momentum=optimizing_parameters["momentum"],
                          nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
     my_model.compile(optimizer=sgd, loss=hp_dict["loss"], metrics=hp_dict["metriccs"])
+
+    train_generator = train_datagen.flow_from_dataframe(df_train, data_dir,
+                                                        x_col=data_gen_dict["x_col"],
+                                                        y_col=data_gen_dict["y_col"],
+                                                        weight_col=None,
+                                                        target_size=hyperparameter_dict["input_size"],
+                                                        class_mode=data_gen_dict["class_mode"],
+                                                        batch_size=hyperparameter_dict["batch_size_ft"],
+                                                        shuffle=True,
+                                                        seed=hyperparameter_dict["seed"],
+                                                        save_to_dir=None,
+                                                        save_prefix="aug_test_")
 
     my_model.fit_generator(train_generator, steps_per_epoch=hp_dict["step_per_epoch"],
                            epochs=hp_dict["epochs_ft"], verbose=hp_dict["verbose"], callbacks=[wandb_callback],
