@@ -158,11 +158,11 @@ class DataLoader(Sequence):
 
         return X, y
 
-
+# optimal parameter from wandb sweep for fine tuning
 optimizing_parameters = dict(
-    lr=1e-6,
-    decay=1e-10,
-    momentum=0.5
+    lr=0.000006258,
+    decay=2.630e-10,
+    momentum=0.2681
 )
 
 timestr = time.strftime("%Y_%m_%d-%H:%M:%S")
@@ -426,6 +426,8 @@ if __name__ == '__main__':
                            max_queue_size=hp_dict["max_queue_size"], workers=hp_dict["workers"],
                            use_multiprocessing=hp_dict["use_multiprocessing"], shuffle=hp_dict["shuffle"],
                            initial_epoch=hp_dict["initial_epoch"])
+
+    my_model.save(os.path.join(wandb.run.dir, "model_tumor_detection_fine_tuned.h5"))
 
     #wandb.log({"val_loss": results.params["val_accuracy"]})
 
