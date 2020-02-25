@@ -224,7 +224,7 @@ if __name__ == '__main__':
     x = model.output
     x = GlobalAveragePooling2D()(x)
     x = Dropout(rate=0.2)(x)
-    pred = Dense(len(hp_dict["labels"]), activation='softmax')(x)
+    pred = Dense(len(property_dict["labels"]), activation='softmax')(x)
 
     my_model = Model(inputs=model.input, outputs=pred)
     print('complile model')
