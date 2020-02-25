@@ -17,6 +17,9 @@ from wandb.keras import WandbCallback
 
 from utils.experiment_setup import create_data_frame, split_data_frame, random_crop
 
+experiment = "tumor_detection"
+#experiment = "MSI_classification"
+
 cf = SourceFileLoader('cf', 'configs/config_tumor_detection.py').load_module()
 
 class DataLoader(Sequence):
@@ -105,7 +108,7 @@ if __name__ == '__main__':
     data_gen_dict = cf.data_gen_dict
     hp_dict = cf.hp_dict
 
-    if cf.experiment=="tumor_detection":
+    if experiment=="tumor_detection":
         base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'Jakob_cancer_detection')
         data_dir_train = os.path.join(base_dir, 'train')
         data_dir_val = data_dir_train
@@ -116,7 +119,7 @@ if __name__ == '__main__':
         # get indices for train and validation
         train_idx, val_idx = next(kf.split(X=np.zeros(len(df_total)), y=df_total['label']))
         df_train, df_val = split_data_frame(df_total, train_idx, val_idx)
-    elif cf.experiment=="MSI_classification":
+    elif experiment=="MSI_classification":
         base_dir = os.path.join(os.environ['PATHOMIX_DATA'], 'MSI_classification')
         data_dir_train = os.path.join(base_dir, 'train')
         data_dir_val = os.path.join(base_dir, 'test')
