@@ -15,7 +15,7 @@ from importlib.machinery import SourceFileLoader
 import wandb
 from wandb.keras import WandbCallback
 
-from pathomix.efficient_net.utils.experiment_setup import create_data_frame, split_data_frame, random_crop
+from utils.experiment_setup import create_data_frame, split_data_frame, random_crop
 
 cf = SourceFileLoader('cf', 'configs/tumor_detection_config.py').load_module()
 
