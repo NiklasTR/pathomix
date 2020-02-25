@@ -17,7 +17,7 @@ from wandb.keras import WandbCallback
 
 from utils.experiment_setup import create_data_frame, split_data_frame, random_crop
 
-cf = SourceFileLoader('cf', 'configs/tumor_detection_config.py').load_module()
+cf = SourceFileLoader('cf', 'configs/config_tumor_detection.py').load_module()
 
 class DataLoader(Sequence):
 
