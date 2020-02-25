@@ -170,7 +170,7 @@ debug = False
 if debug:
     wandb.init(name=timestr, config=optimizing_parameters, project="first_aws")
 else:
-    wandb.init(name=timestr, config=optimizing_parameters, project="td_no_norm")
+    wandb.init(name=timestr, config=optimizing_parameters, project="fine_tuning")
 
 if __name__ == '__main__':
     '''
