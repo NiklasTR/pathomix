@@ -314,7 +314,7 @@ if __name__ == '__main__':
         seed=hyperparameter_dict["seed"],
         batch_size=hyperparameter_dict["batch_size"],
         input_size=hyperparameter_dict["input_size"],
-        epochs_ul=5,
+        epochs_ul=3,
         epochs_ft=10,
         nesterov=False,
         labels=labels,
@@ -400,6 +400,8 @@ if __name__ == '__main__':
     #
     # start fine tuning
     #
+    for i, layer in enumerate(my_model.layers):
+        layer.trainable = True
     sgd = optimizers.SGD(learning_rate=optimizing_parameters["lr"], momentum=optimizing_parameters["momentum"],
                          nesterov=hp_dict["nesterov"], decay=optimizing_parameters["decay"])
     my_model.compile(optimizer=sgd, loss=hp_dict["loss"], metrics=hp_dict["metriccs"])
