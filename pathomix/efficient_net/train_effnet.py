@@ -14,7 +14,7 @@ from wandb.keras import WandbCallback
 
 from utils.experiment_setup import create_data_frame, split_data_frame, random_crop, DataLoader
 
-def train_eff_net(experiment, cf, debug):
+def train_effnet(experiment, cf, debug):
     '''
         parser = argparse.ArgumentParser(description='Give parameters for tumor detection fine tuning')
         parser.add_argument("--learning-rate", help="")
