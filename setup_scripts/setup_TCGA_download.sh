@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /home/ubuntu
+
 mkdir -p ~/bucket/TCGA
 
 export PATHOMIX_DATA=/home/ubuntu/bucket
