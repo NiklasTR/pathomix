@@ -22,7 +22,8 @@ def download_from_manifest(single_manifest_path):
 
 
 def download_from_case_id(case_id):
-    subprocess.run([os.environ['GDC_PATH'], 'download', case_id])
+    local_target_path = os.path.join(os.environ['PATHOMIX_DATA'], "TCGA")
+    subprocess.run([os.environ['GDC_PATH'], '--dir', local_target_path, 'download', case_id])
     return None
 
 
