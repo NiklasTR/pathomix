@@ -41,7 +41,7 @@ def delete_TCGA_folder(case_id):
 
 if __name__=="__main__":
     total_manifest_path = ""
-    df = load_TCGA_manifest(total_manifest_path)
+    df = load_TCGA_manifest()
     for case_id in df.id:
         download_from_case_id(case_id)
         sync_with_s3(case_id)
