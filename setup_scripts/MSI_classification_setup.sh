@@ -1,18 +1,51 @@
 #!/bin/bash
 
-mkdir -p ~/bucket/TCGA
+mkdir -p ~/bucket/MSI_classification
 
 export PATHOMIX_DATA=/home/ubuntu/bucket
 
+mkdir -p ~/virtual_envs
+
+python3 -m venv ~/virtual_envs/venv_pathomix
+
+source ~/virtual_envs/venv_pathomix/bin/activate
+#source /home/ubuntu/virtual_envs/venv_pathomix/bin/activate
+pip install --upgrade pip
+#pip install -r requirements.txt
+
+pip install wandb
+pip install efficientnet
+sudo apt-get install openslide-tools	
+pip install Pillow
+pip install openslide-python
+pip install --upgrade scikit-image
+
+wandb login
+
 aws configure
+#aws s3 sync s3://evotec/pathomix/cancer_detection_jakob /home/ubuntu/bucket/Jakob_cancer_detection/
 
-# download TCGA downloading tool
-wget https://gdc.cancer.gov/system/files/authenticated%20user/0/gdc-client_v1.5.0_Ubuntu_x64.zip
-unzip gdc-client_v1.5.0_Ubuntu_x64.zip
 
-export GDC_PATH=/home/ubuntu/gdc-client
+# make train folder
+cd ~/bucket/MSI_classification
+mkdir train
+cd train
+wget -v https://zenodo.org/record/2530835/files/CRC_DX_TRAIN_MSIMUT.zip
+unzip CRC_DX_TRAIN_MSIMUT.zip
+rm CRC_DX_TRAIN_MSIMUT.zip
+wget -v https://zenodo.org/record/2530835/files/CRC_DX_TRAIN_MSS.zip
+unzip CRC_DX_TRAIN_MSS.zip   
+rm CRC_DX_TRAIN_MSS.zip  
 
-export MANIFEST_PATH=/home/ubuntu/pathomix/data/TCGA_manifests/manifest_TCGA_COAD.txt
+# make test folder
+cd ..
+mkdir test
+cd test
+wget -v https://zenodo.org/record/2530835/files/CRC_DX_TEST_MSIMUT.zip
+unzip CRC_DX_TEST_MSIMUT.zip  
+rm RC_DX_TEST_MSIMUT.zip 
+wget -v https://zenodo.org/record/2530835/files/CRC_DX_TEST_MSS.zip
+unzip CRC_DX_TEST_MSS.zip
+rm CRC_DX_TEST_MSS.zip
 
-python /home/ubuntu/pathomix/pathomix/preprocessing/utils/download_from_TCGA.py
 
