@@ -36,7 +36,7 @@ def sync_with_s3(case_id, s3_TCGA_bucket="s3://evotec/pathomix/data/TCGA", cohor
 
 def delete_TCGA_folder(case_id):
     source_path = os.path.join(os.environ['PATHOMIX_DATA'], "TCGA", case_id)
-    subprocess.run("rm", "-dr", source_path)
+    subprocess.run(["rm", "-dr", source_path])
     return None
 
 
