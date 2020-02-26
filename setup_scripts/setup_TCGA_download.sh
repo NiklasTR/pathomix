@@ -16,5 +16,5 @@ export GDC_PATH=/home/ubuntu/gdc-client
 
 export MANIFEST_PATH=/home/ubuntu/pathomix/data/TCGA_manifests/manifest_TCGA_COAD.txt
 
-python /home/ubuntu/pathomix/pathomix/preprocessing/utils/download_from_TCGA.py
+python3 /home/ubuntu/pathomix/pathomix/preprocessing/utils/download_from_TCGA.py
 
