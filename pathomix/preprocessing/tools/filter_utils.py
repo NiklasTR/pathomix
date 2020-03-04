@@ -747,6 +747,7 @@ def filter_green_channel(np_img, green_thresh=200, avoid_overmask=True, overmask
   t = util.Time()
 
   g = np_img[:, :, 1]
+  ss = np_img.shape
   gr_ch_mask = (g < green_thresh) & (g > 0)
   mask_percentage = mask_percent(gr_ch_mask)
   if (mask_percentage >= overmask_thresh) and (green_thresh < 255) and (avoid_overmask is True):

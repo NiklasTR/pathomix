@@ -15,6 +15,8 @@
 # ------------------------------------------------------------------------
 
 # To get around renderer issue on macOS going from Matplotlib image to NumPy image.
+from typing import Any, Union
+
 import matplotlib
 
 matplotlib.use('Agg')
@@ -38,7 +40,9 @@ TISSUE_LOW_THRESH = cf.TISSUE_LOW_THRESH
 
 ROW_TILE_SIZE = cf.ROW_TILE_SIZE
 COL_TILE_SIZE = cf.COL_TILE_SIZE
+ROW_TILE_SIZE_SCALED = cf.ROW_TILE_SIZE_SCALED
 NUM_TOP_TILES = cf.NUM_TOP_TILES
+SCALE_FACTOR = cf.SCALE_FACTOR
 
 DISPLAY_TILE_SUMMARY_LABELS = cf.DISPLAY_TILE_SUMMARY_LABELS
 TILE_LABEL_TEXT_SIZE = cf.TILE_LABEL_TEXT_SIZE
@@ -96,7 +100,7 @@ def get_num_tiles(rows, cols, row_tile_size, col_tile_size, cutoff=False):
   return num_row_tiles, num_col_tiles
 
 
-def get_tile_indices(rows, cols, row_tile_size, col_tile_size, multiples=None, cutoff=False):
+def get_tile_indices(cols, rows, col_tile_size, row_tile_size, multiples=ROW_TILE_SIZE, cutoff=True):
   """
   Obtain a list of tile coordinates (starting row, ending row, starting column, ending column, row number, column number).
 
@@ -114,25 +118,35 @@ def get_tile_indices(rows, cols, row_tile_size, col_tile_size, multiples=None, c
   """
   indices = list()
   num_row_tiles, num_col_tiles = get_num_tiles(rows, cols, row_tile_size, col_tile_size, cutoff=cutoff)
+  end_r = 0 # set dummy for first loop
+  row_increase = int(row_tile_size // multiples * multiples)
+  col_increase = int(col_tile_size // multiples * multiples)
+  #row_increase = (row_tile_size // 224 * 224)
+  #col_increase = (col_tile_size // 224 * 224)
+  assert row_increase > 0, AssertionError('decrease ROW_TILE_SIZE_SCALED or SCALE_FACTOR')
+  assert col_increase > 0, AssertionError('decrease COL_TILE_SIZE_SCALED or SCALE_FACTOR')
   for r in range(0, num_row_tiles):
-    start_r = r * row_tile_size
+    start_r = end_r #r * (row_tile_size//multiples * multiples)
     if multiples:
-      if (r < num_row_tiles - 1):
-        end_r = ((r + 1) * row_tile_size)
+      if (r < num_row_tiles-1):
+        end_r = start_r + row_increase
       else:
         end_r =start_r + (rows - start_r) // multiples * multiples
     else:
-      end_r = ((r + 1) * row_tile_size) if (r < num_row_tiles - 1) else rows
+      end_r = start_r + row_increase if (r < num_row_tiles - 1) else rows
+    end_c = 0 # set dummy for first loop
     for c in range(0, num_col_tiles):
-      start_c = c * col_tile_size
+      start_c = end_c
       if multiples:
-        if (c < num_col_tiles - 1):
-          end_c = ((c + 1) * col_tile_size)
+        if (c < num_col_tiles-1):
+          end_c = start_c + col_increase
         else:
           end_c = start_c + (cols - start_c) // multiples * multiples
       else:
-        end_c = ((c + 1) * col_tile_size) if (c < num_col_tiles - 1) else cols
-      indices.append((start_r, end_r, start_c, end_c, r + 1, c + 1))
+        end_c = start_c + col_increase if (c < num_col_tiles - 1) else cols
+      indices.append((start_c, end_c, start_r, end_r, c + 1, r + 1))
+      if c == num_col_tiles - 1 and not r == num_row_tiles - 1:
+        end_c = 0
   if multiples:
     print("last {} pixels dropped along rows to match multiples of {}".format(rows - end_r, multiples))
     print("last {} pixels dropped along columns to match multiples of {}".format(cols - end_c, multiples))
@@ -682,12 +696,10 @@ def score_tiles(slide_num, np_img=None, np_img_raw=None, dimensions=None, small_
   if np_img is None:
     np_img = slide_utils.open_image_np(img_path)
 
-  row_tile_size = round(ROW_TILE_SIZE / slide_utils.SCALE_FACTOR)  # use round?
-  col_tile_size = round(COL_TILE_SIZE / slide_utils.SCALE_FACTOR)  # use round?
   #row_tile_size = ROW_TILE_SIZE
   #col_tile_size = COL_TILE_SIZE
 
-  num_row_tiles, num_col_tiles = get_num_tiles(h, w, row_tile_size, col_tile_size)
+  num_row_tiles, num_col_tiles = get_num_tiles(h, w, ROW_TILE_SIZE_SCALED, ROW_TILE_SIZE_SCALED, cutoff=False)
 
   tile_sum = TileSummary(slide_num=slide_num,
                          orig_w=o_w,
@@ -696,8 +708,8 @@ def score_tiles(slide_num, np_img=None, np_img_raw=None, dimensions=None, small_
                          orig_tile_h=ROW_TILE_SIZE,
                          scaled_w=w,
                          scaled_h=h,
-                         scaled_tile_w=col_tile_size,
-                         scaled_tile_h=row_tile_size,
+                         scaled_tile_w=ROW_TILE_SIZE_SCALED,
+                         scaled_tile_h=ROW_TILE_SIZE_SCALED,
                          tissue_percentage=filter_utils.tissue_percent(np_img),
                          num_col_tiles=num_col_tiles,
                          num_row_tiles=num_row_tiles)
@@ -707,13 +719,13 @@ def score_tiles(slide_num, np_img=None, np_img_raw=None, dimensions=None, small_
   medium = 0
   low = 0
   none = 0
-  tile_indices = get_tile_indices(h, w, row_tile_size, col_tile_size)
+  tile_indices = get_tile_indices(w, h, ROW_TILE_SIZE_SCALED, ROW_TILE_SIZE_SCALED, multiples=ROW_TILE_SIZE_SCALED, cutoff=True)
   for t in tile_indices:
     count += 1  # tile_num
-    r_s, r_e, c_s, c_e, r, c = t
+    c_s, c_e, r_s, r_e, c, r = t  # type: (Union[int, Any], object, Union[int, Any], object, int, int)
     # adjust rows and colums index to absolute position
-    r += offset[0] // ROW_TILE_SIZE
-    c += offset[1] // COL_TILE_SIZE
+    c += offset[0] // COL_TILE_SIZE
+    r += offset[1] // ROW_TILE_SIZE
     np_tile = np_img[r_s:r_e, c_s:c_e]
     if np_img_raw is not None:
       np_tile_raw = np_img_raw[r_s:r_e, c_s:c_e]
@@ -965,6 +977,7 @@ def multiprocess_filtered_images_to_tiles(display=False, save_summary=True, save
 
   slide_nums = list()
   tile_summaries_dict = dict()
+  counter = 0
   for result in results:
     image_nums, tile_summaries = result.get()
     slide_nums.extend(image_nums)
@@ -1803,7 +1816,7 @@ class TileSummary:
   orig_h = None
   orig_tile_w = None
   orig_tile_h = None
-  scale_factor = slide_utils.SCALE_FACTOR
+  scale_factor = SCALE_FACTOR
   scaled_w = None
   scaled_h = None
   scaled_tile_w = None

@@ -13,16 +13,17 @@
 # limitations under the License.
 #
 # ------------------------------------------------------------------------
-
+import os
+os.chdir("/home/pmf/Documents/DataMining/pathomix")
 import glob
 import math
 import matplotlib.pyplot as plt
 import multiprocessing
+from multiprocessing import Manager, Process
 import numpy as np
 import gc
 import openslide
 from openslide import OpenSlideError
-import os
 import PIL
 from PIL import Image
 import re
@@ -30,7 +31,6 @@ import sys
 from importlib.machinery import SourceFileLoader
 #from tools import util
 from pathomix.preprocessing.tools import util, tiles, filter_utils
-
 cf = SourceFileLoader('cf', './pathomix/preprocessing/tools/configs/config.py').load_module()
 
 NUM_PROCESSES = cf.NUM_PROCESSES
@@ -812,77 +812,136 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   large_w, large_h = my_slide.dimensions
   level = my_slide.get_best_level_for_downsample(SCALE_FACTOR)
   # make sure new split is multiple of ROW_TILE_SIZE_SCALED
-  large_w_split = math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED) * ROW_TILE_SIZE_SCALED
-  large_h_split = math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED) * ROW_TILE_SIZE_SCALED
+  assert math.floor(my_slide.level_dimensions[level][0] / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED) > 0, AssertionError('reduce COL_NUM_SPLIT or SCALE_FACTOR')
+  assert math.floor(my_slide.level_dimensions[level][1] / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED) > 0, AssertionError('reduce ROW_NUM_SPLIT or SCALE_FACTOR')
+  #large_w_split = math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE) * ROW_TILE_SIZE
+  #large_h_split = math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE) * ROW_TILE_SIZE
+
+  # size per patch for a given number of splits along cols and rows
+  large_w_split = int(math.floor(large_w / COL_NUM_SPLIT / my_slide.level_downsamples[level]) * my_slide.level_downsamples[level])
+  large_h_split = int(math.floor(large_h / ROW_NUM_SPLIT / my_slide.level_downsamples[level]) * my_slide.level_downsamples[level])
+  # size of downsampled patches
   new_w = math.floor(large_w_split / SCALE_FACTOR)
   new_h = math.floor(large_h_split / SCALE_FACTOR)
-
-  indices = tiles.get_tile_indices(my_slide.level_dimensions[level][0], my_slide.level_dimensions[level][1],
-                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE, cutoff=True)
+  indices = tiles.get_tile_indices(large_w, large_h,
+                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level], cutoff=True)
   num_indices = len(indices)
   t = util.Time()
 
+  '''
   p = multiprocessing.Pool(NUM_PROCESSES)
 
   p.map(split_subslide_into_tile,
         zip([slide_number] * num_indices, indices, [level] * num_indices,
             [large_w] * num_indices, [large_h] * num_indices, [new_w] * num_indices, [new_h] * num_indices,
             [small_tile_in_tile] * num_indices))
+  '''
 
+  tasks = []
+  for idx in indices:
+    tasks.append([slide_number, idx, level, large_w, large_h, new_w, new_h, small_tile_in_tile])
+
+  n = len(tasks)//NUM_PROCESSES
+  task_split = [tasks[i:i + n] for i in range(0, len(tasks), n)]
+  '''
+  pool = multiprocessing.Pool(NUM_PROCESSES)
+  results = []
+  for task in tasks:
+    print(task)
+    results.append(pool.apply_async(split_subslide_into_tile, task))
+  '''
+
+  manager = Manager()
+  results = manager.list()
+
+  job = [Process(target=split_subslide_into_tile, args=(results, task)) for task in task_split]
+
+  _ = [p.start() for p in job]
+  _ = [p.join() for p in job]
+
+  # create pandas data frame holding all results
+  results_list = list(results)
+  #collect_results = []
+  #for result in results:
+  #  collect_results.append(result.get())
+
+  '''
   p.close()
   p.join()
+  '''
 
   t.elapsed_display()
-  return None
+  return results_list
   # split image
 
-def split_subslide_into_tile(args):
-  slide_number, ind,  level, large_w, large_h, new_w, new_h, small_tile_in_tile, = args
 
-  slide_filepath = get_training_slide_path(slide_number)
-  my_slide = open_slide(slide_filepath)
+def split_subslide_into_tile(results, args):
+  for arg in args:
+    slide_number, ind,  level, large_w, large_h, new_w, new_h, small_tile_in_tile = arg
 
-  row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
+    slide_filepath = get_training_slide_path(slide_number)
+    my_slide = open_slide(slide_filepath)
 
-  #split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
-  #                                      (large_w_split//int(my_slide.level_downsamples[level]),
-  #                                       large_h_split//int(my_slide.level_downsamples[level])))
-  split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
-                                     (my_slide.level_dimensions[level][0] // COL_NUM_SPLIT,
-                                      my_slide.level_dimensions[level][1] // ROW_NUM_SPLIT))
-  split_patch = split_patch.convert("RGB")
-  split_patch = split_patch.resize((new_w, new_h), PIL.Image.BILINEAR)
-  np_img = util.pil_to_np_rgb(split_patch)
+    #row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
+    col_idx_start, col_idx_end, row_idx_start, row_idx_end, tile_col_idx, tile_row_idx = ind
 
-  filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=True, display=False,
-                                                 thumbnail_only=True)
+    #split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
+    #                                      (large_w_split//int(my_slide.level_downsamples[level]),
+    #                                       large_h_split//int(my_slide.level_downsamples[level])))
 
-  tile_sum = tiles.score_tiles(slide_number, filt_np_img, np_img, (large_w, large_h, new_w, new_h), small_tile_in_tile=small_tile_in_tile,
-                               offset=[row_idx_start, col_idx_start])
+    # define size of subtiles in reference frame: get size of subtile from best level. Size will be closest to the desired
+    # patch size (e.g. large_w / NUM_COL_SPLIT)
+    sample_patch_w = int((col_idx_end - col_idx_start)//my_slide.level_downsamples[level])
+    sameple_patch_h = int((row_idx_end - row_idx_start)//my_slide.level_downsamples[level])
+    # after sampling from "un-resized", the patches have to be resize to the desired patch size (e.g. 512)
+    # therefore it is recommended to downscale with the factors: 1, 4, 16, 32
+    final_patch_w = int((col_idx_end - col_idx_start)//SCALE_FACTOR)
+    final_patch_h = int((row_idx_end - row_idx_start)//SCALE_FACTOR)
 
-  counter = 0
-  for tile in tile_sum.tiles_by_tissue_percentage():
-    print(tile.tissue_percentage)
-    if tile.tissue_percentage > TISSUE_THRESHOLD:
-      counter += 1
-      tile.save_scaled_tile()
-    else:
-      break
-  print("{} tiles saved".format(counter))
-  '''
-  img_path = get_training_image_path_split(slide_number, large_w, large_h, new_w, new_h, tile_row_idx, tile_col_idx)
-  print("Saving image to: " + img_path)
-  if not os.path.exists(DEST_TRAIN_DIR):
-    os.makedirs(DEST_TRAIN_DIR)
-  img.save(img_path)
-  '''
-  thumbnail_path = get_training_thumbnail_path_split(slide_number, large_w, large_h, new_w, new_h,
-                                               tile_row_idx, tile_col_idx)
-  save_thumbnail(split_patch, THUMBNAIL_SIZE, thumbnail_path)
-  del tile_sum, filt_np_img, np_img, split_patch
-  gc.collect()
+    split_patch = my_slide.read_region((col_idx_start, row_idx_start), level,
+                                       (sample_patch_w, sameple_patch_h))
+    split_patch = split_patch.convert("RGB")
+    split_patch = split_patch.resize((final_patch_w, final_patch_h), PIL.Image.BILINEAR)
+    np_img = util.pil_to_np_rgb(split_patch)
 
-  return None
+    filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=True, display=False,
+                                                   thumbnail_only=False)
+
+    tile_sum = tiles.\
+      score_tiles(slide_number, filt_np_img, np_img, (large_w, large_h, final_patch_w, final_patch_h), small_tile_in_tile=small_tile_in_tile,
+                                 offset=[row_idx_start, col_idx_start])
+
+    counter = 0
+    for tile in tile_sum.tiles_by_tissue_percentage():
+      print(tile.tissue_percentage)
+      if tile.tissue_percentage > TISSUE_THRESHOLD:
+        counter += 1
+        tile.save_scaled_tile()
+      else:
+        break
+    print("{} tiles saved".format(counter))
+    '''
+    img_path = get_training_image_path_split(slide_number, large_w, large_h, new_w, new_h, tile_row_idx, tile_col_idx)
+    print("Saving image to: " + img_path)
+    if not os.path.exists(DEST_TRAIN_DIR):
+      os.makedirs(DEST_TRAIN_DIR)
+    img.save(img_path)
+    '''
+    thumbnail_path = get_training_thumbnail_path_split(slide_number, large_w, large_h, new_w, new_h,
+                                                 tile_row_idx, tile_col_idx)
+    save_thumbnail(split_patch, THUMBNAIL_SIZE, thumbnail_path)
+    results.append(tile_sum)
+    del tile_sum, filt_np_img, np_img, split_patch
+    gc.collect()
+
+
+  return results
+
+'''
+def predict_on_tile_summary(tile_summary):
+  for t in tile_summary.tiles():
+    if t.tissue_percentage > TISSUE_THRESHOLD:
+'''
 
 
 def slide_to_scaled_np_image(slide_number):
@@ -1017,6 +1076,8 @@ def multiprocess_training_slides_to_images():
       print("Done converting slides %d through %d" % (start_ind, end_ind))
 
   timer.elapsed_display()
+
+  return results
 
 
 def slide_stats():
@@ -1208,17 +1269,78 @@ def slide_info(display_all_properties=False):
 
   t.elapsed_display()
 
+if __name__ == "__main__":
+  #print(SCALE_FACTOR)
+  #t = slide_to_scaled_tiles(0)
+  results = []
+  #task =[0, (0, 5800, 0, 8700, 1, 1), 2, 80128, 61184, 300, 200, True]
+  #tasks =[[0, (0, 8700, 0, 5800, 1, 1), 2, 80128, 61184, 300, 200, True],
+  #        [0, (8700, 17400, 0, 5800, 2, 1), 2, 80128, 61184, 300, 200, True]]
 
-# if __name__ == "__main__":
-  # show_slide(2)
-  # slide_info(display_all_properties=True)
-  # slide_stats()
+  '''
+  #tasks =[[0, (8700, 17400, 0, 5800, 2, 1), 2, 80128, 61184, 300, 200, True]]
+  tasks = [[0, (0, 25600.0, 0, 19200.0, 1, 1), 2, 80128, 61184, 883, 674, True],
+   [0, (25600.0, 51200.0, 0, 19200.0, 2, 1), 2, 80128, 61184, 883, 674, True],
+   [0, (51200.0, 80000.0, 0, 19200.0, 3, 1), 2, 80128, 61184, 883, 674, True],
+   [0, (0, 25600.0, 19200.0, 38400.0, 1, 2), 2, 80128, 61184, 883, 674, True],
+   [0,
+    (25600.0, 51200.0, 19200.0, 38400.0, 2, 2),
+    2,
+    80128,
+    61184,
+    883,
+    674,
+    True],
+   [0,
+    (51200.0, 80000.0, 19200.0, 38400.0, 3, 2),
+    2,
+    80128,
+    61184,
+    883,
+    674,
+    True],
+   [0, (0, 25600.0, 38400.0, 60800.0, 1, 3), 2, 80128, 61184, 883, 674, True],
+   [0,
+    (25600.0, 51200.0, 38400.0, 60800.0, 2, 3),
+    2,
+    80128,
+    61184,
+    883,
+    674,
+    True],
+   [0,
+    (51200.0, 80000.0, 38400.0, 60800.0, 3, 3),
+    2,
+    80128,
+    61184,
+    883,
+    674,
+    True]]
 
-  # training_slide_to_image(4)
-  # img_path = get_training_image_path(4)
-  # img = open_image(img_path)
-  # img.show()
+  t = split_subslide_into_tile(results, tasks)
+  '''
+  '''
+  slide_number = 0
+  slide_filepath = get_training_slide_path(slide_number)
+  print("Opening Slide #%d: %s" % (slide_number, slide_filepath))
+  my_slide = open_slide(slide_filepath)
 
-  # slide_to_scaled_pil_image(5)[0].show()
-  # singleprocess_training_slides_to_images()
-  # multiprocess_training_slides_to_images()
+  large_w, large_h = my_slide.dimensions
+  level = my_slide.get_best_level_for_downsample(SCALE_FACTOR)
+  # make sure new split is multiple of ROW_TILE_SIZE_SCALED
+  assert math.floor(my_slide.level_dimensions[level][0] / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED) > 0, AssertionError('reduce COL_NUM_SPLIT or SCALE_FACTOR')
+  assert math.floor(my_slide.level_dimensions[level][1] / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED) > 0, AssertionError('reduce ROW_NUM_SPLIT or SCALE_FACTOR')
+  #large_w_split = math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE) * ROW_TILE_SIZE
+  #large_h_split = math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE) * ROW_TILE_SIZE
+
+  # size per patch for a given number of splits along cols and rows
+  large_w_split = int(math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level]) * my_slide.level_downsamples[level])
+  large_h_split = int(math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level]) * my_slide.level_downsamples[level])
+  # size of downsampled patches
+  new_w = math.floor(large_w_split / SCALE_FACTOR)
+  new_h = math.floor(large_h_split / SCALE_FACTOR)
+  indices = tiles.get_tile_indices(large_w, large_h,
+                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level], cutoff=True)
+  '''
+
+  t = slide_to_scaled_tiles(0)

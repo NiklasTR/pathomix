@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# download TCGA manifest as shown in http://www.andrewjanowczyk.com/download-tcga-digital-pathology-images-ffpe/
+
 cd /home/ubuntu
 
 mkdir -p ~/bucket/TCGA

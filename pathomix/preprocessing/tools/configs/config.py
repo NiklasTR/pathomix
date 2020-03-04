@@ -15,7 +15,7 @@ SRC_TRAIN_DIR = os.path.join(BASE_DIR, "WSI")
 SRC_TRAIN_EXT = "svs"
 DEST_TRAIN_SUFFIX = "small-"  # Example: "train-"
 DEST_TRAIN_EXT = "jpg"
-#SCALE_FACTOR = 32
+#SCALE_FACTOR = 29
 SCALE_FACTOR = 2
 DEST_TRAIN_DIR = os.path.join(BASE_DIR, "training_" + DEST_TRAIN_EXT)
 THUMBNAIL_SIZE = 300
@@ -45,6 +45,7 @@ COL_TILE_SIZE_SCALED = 512
 # size of tiles on the original image
 ROW_TILE_SIZE = ROW_TILE_SIZE_SCALED * SCALE_FACTOR
 COL_TILE_SIZE = COL_TILE_SIZE_SCALED * SCALE_FACTOR
+
 ROW_NUM_SPLIT = 8
 # make sure all cores are used for processing
 if multiprocessing.cpu_count() == 4:
@@ -61,7 +62,7 @@ TOP_TILES_THUMBNAIL_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_thumbnail_
 TOP_TILES_ON_ORIGINAL_DIR = os.path.join(BASE_DIR, TOP_TILES_SUFFIX + "_on_original_" + DEST_TRAIN_EXT)
 TOP_TILES_ON_ORIGINAL_THUMBNAIL_DIR = os.path.join(BASE_DIR,
                                                    TOP_TILES_SUFFIX + "_on_original_thumbnail_" + THUMBNAIL_EXT)
-TISSUE_THRESHOLD = 90
+TISSUE_THRESHOLD = 95
 
 TILE_DIR = os.path.join(BASE_DIR, "tiles_" + DEST_TRAIN_EXT)
 TILE_SUFFIX = "tile"
