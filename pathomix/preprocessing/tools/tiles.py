@@ -32,7 +32,7 @@ from PIL import Image, ImageDraw, ImageFont
 from enum import Enum
 from pathomix.preprocessing.tools import util, filter_utils, slide_utils
 
-
+#config_path =
 cf = SourceFileLoader('cf', './pathomix/preprocessing/tools/configs/config.py').load_module()
 
 TISSUE_HIGH_THRESH = cf.TISSUE_HIGH_THRESH
@@ -181,7 +181,7 @@ def create_summary_pil_img(np_img, title_area_height, row_tile_size, col_tile_si
   return summary
 
 
-def generate_tile_summaries(tile_sum, np_img, display=True, save_summary=False):
+def generate_tile_summaries(tile_sum, np_img=None, display=True, save_summary=False):
   """
   Generate summary images/thumbnails showing a 'heatmap' representation of the tissue segmentation of all tiles.
 
@@ -191,6 +191,7 @@ def generate_tile_summaries(tile_sum, np_img, display=True, save_summary=False):
     display: If True, display tile summary to screen.
     save_summary: If True, save tile summary images.
   """
+
   z = 300  # height of area at top of summary slide
   slide_num = tile_sum.slide_num
   rows = tile_sum.scaled_h
@@ -198,8 +199,9 @@ def generate_tile_summaries(tile_sum, np_img, display=True, save_summary=False):
   row_tile_size = tile_sum.scaled_tile_h
   col_tile_size = tile_sum.scaled_tile_w
   num_row_tiles, num_col_tiles = get_num_tiles(rows, cols, row_tile_size, col_tile_size)
-  summary = create_summary_pil_img(np_img, z, row_tile_size, col_tile_size, num_row_tiles, num_col_tiles)
-  draw = ImageDraw.Draw(summary)
+  if np_img:
+    summary = create_summary_pil_img(np_img, z, row_tile_size, col_tile_size, num_row_tiles, num_col_tiles)
+    draw = ImageDraw.Draw(summary)
 
   original_img_path = slide_utils.get_training_image_path(slide_num)
   np_orig = slide_utils.open_image_np(original_img_path)
@@ -208,13 +210,15 @@ def generate_tile_summaries(tile_sum, np_img, display=True, save_summary=False):
 
   for t in tile_sum.tiles:
     border_color = tile_border_color(t.tissue_percentage)
-    tile_border(draw, t.r_s + z, t.r_e + z, t.c_s, t.c_e, border_color)
+    if np_img:
+      tile_border(draw, t.r_s + z, t.r_e + z, t.c_s, t.c_e, border_color)
     tile_border(draw_orig, t.r_s + z, t.r_e + z, t.c_s, t.c_e, border_color)
 
   summary_txt = summary_title(tile_sum) + "\n" + summary_stats(tile_sum)
 
   summary_font = ImageFont.truetype(SUMMARY_TITLE_FONT_PATH, size=SUMMARY_TITLE_TEXT_SIZE)
-  draw.text((5, 5), summary_txt, SUMMARY_TITLE_TEXT_COLOR, font=summary_font)
+  if np_img:
+    draw.text((5, 5), summary_txt, SUMMARY_TITLE_TEXT_COLOR, font=summary_font)
   draw_orig.text((5, 5), summary_txt, SUMMARY_TITLE_TEXT_COLOR, font=summary_font)
 
   if DISPLAY_TILE_SUMMARY_LABELS:
@@ -224,17 +228,21 @@ def generate_tile_summaries(tile_sum, np_img, display=True, save_summary=False):
       label = "R%d\nC%d" % (t.r, t.c)
       font = ImageFont.truetype(FONT_PATH, size=TILE_LABEL_TEXT_SIZE)
       # drop shadow behind text
-      draw.text(((t.c_s + 3), (t.r_s + 3 + z)), label, (0, 0, 0), font=font)
+      if np_img:
+        draw.text(((t.c_s + 3), (t.r_s + 3 + z)), label, (0, 0, 0), font=font)
       draw_orig.text(((t.c_s + 3), (t.r_s + 3 + z)), label, (0, 0, 0), font=font)
 
-      draw.text(((t.c_s + 2), (t.r_s + 2 + z)), label, SUMMARY_TILE_TEXT_COLOR, font=font)
+      if np_img:
+        draw.text(((t.c_s + 2), (t.r_s + 2 + z)), label, SUMMARY_TILE_TEXT_COLOR, font=font)
       draw_orig.text(((t.c_s + 2), (t.r_s + 2 + z)), label, SUMMARY_TILE_TEXT_COLOR, font=font)
 
   if display:
-    summary.show()
+    if np_img:
+      summary.show()
     summary_orig.show()
   if save_summary:
-    save_tile_summary_image(summary, slide_num)
+    if np_img:
+      save_tile_summary_image(summary, slide_num)
     save_tile_summary_on_original_image(summary_orig, slide_num)
 
 
@@ -549,8 +557,10 @@ def summary_and_tiles(slide_num, display=True, save_summary=False, save_data=Tru
 
   """
   img_path = slide_utils.get_filter_image_result(slide_num)
-  np_img = slide_utils.open_image_np(img_path)
-
+  try:
+    np_img = slide_utils.open_image_np(img_path)
+  except:
+    np_img = None
   tile_sum = score_tiles(slide_num, np_img)
   if save_data:
     save_tile_data(tile_sum)
@@ -1948,6 +1958,7 @@ class Tile:
     self.s_and_v_factor = s_and_v_factor
     self.quantity_factor = quantity_factor
     self.score = score
+    self.tumor_score = -1
 
   def __str__(self):
     return "[Tile #%d, Row #%d, Column #%d, Tissue %4.2f%%, Score %0.4f]" % (
@@ -1985,6 +1996,9 @@ class Tile:
 
   def get_pil_scaled_tile(self):
     return util.np_to_pil(self.np_scaled_tile)
+
+  def set_tumor_score(self, tumor_score):
+    self.tumor_score = tumor_score
 
 
 class TissueQuantity(Enum):

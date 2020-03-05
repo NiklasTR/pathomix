@@ -792,7 +792,7 @@ def slide_to_scaled_pil_image(slide_number):
   return img, large_w, large_h, new_w, new_h
 
 
-def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
+def slide_to_scaled_tiles(slide_path=None, small_tile_in_tile=True):
   """
   Convert a WSI training slide to a scaled-down jpw images in a multiprocessing manner.
 
@@ -805,9 +805,17 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
     None
 
   """
-  slide_filepath = get_training_slide_path(slide_number)
-  print("Opening Slide #%d: %s" % (slide_number, slide_filepath))
-  my_slide = open_slide(slide_filepath)
+  if not slide_path:
+    slide_number = 0
+    slide_filepath = get_training_slide_path(slide_number)
+  else:
+    slide_filepath = slide_path
+
+  try:
+    print("Opening Slide #%d: %s" % (slide_number, slide_filepath))
+    my_slide = open_slide(slide_filepath)
+  except:
+    print('No file found at {}'.format(slide_filepath))
 
   large_w, large_h = my_slide.dimensions
   level = my_slide.get_best_level_for_downsample(SCALE_FACTOR)
@@ -825,7 +833,6 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   new_h = math.floor(large_h_split / SCALE_FACTOR)
   indices = tiles.get_tile_indices(large_w, large_h,
                                   large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level], cutoff=True)
-  num_indices = len(indices)
   t = util.Time()
 
   '''
@@ -854,7 +861,7 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   manager = Manager()
   results = manager.list()
 
-  job = [Process(target=split_subslide_into_tile, args=(results, task)) for task in task_split]
+  job = [Process(target=split_subslide_into_tile, args=(results, task, cf.SAVE_ABOVE_THRESHOLD)) for task in task_split]
 
   _ = [p.start() for p in job]
   _ = [p.join() for p in job]
@@ -875,19 +882,14 @@ def slide_to_scaled_tiles(slide_number, small_tile_in_tile=True):
   # split image
 
 
-def split_subslide_into_tile(results, args):
+def split_subslide_into_tile(results, args, save_above_threshold=False):
   for arg in args:
     slide_number, ind,  level, large_w, large_h, new_w, new_h, small_tile_in_tile = arg
 
     slide_filepath = get_training_slide_path(slide_number)
     my_slide = open_slide(slide_filepath)
 
-    #row_idx_start, row_idx_end, col_idx_start, col_idx_end, tile_row_idx, tile_col_idx = ind
     col_idx_start, col_idx_end, row_idx_start, row_idx_end, tile_col_idx, tile_row_idx = ind
-
-    #split_patch = my_slide.read_region((row_idx_start, col_idx_start), level,
-    #                                      (large_w_split//int(my_slide.level_downsamples[level]),
-    #                                       large_h_split//int(my_slide.level_downsamples[level])))
 
     # define size of subtiles in reference frame: get size of subtile from best level. Size will be closest to the desired
     # patch size (e.g. large_w / NUM_COL_SPLIT)
@@ -904,22 +906,23 @@ def split_subslide_into_tile(results, args):
     split_patch = split_patch.resize((final_patch_w, final_patch_h), PIL.Image.BILINEAR)
     np_img = util.pil_to_np_rgb(split_patch)
 
-    filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=True, display=False,
+    filt_np_img = filter_utils.apply_image_filters(np_img, slide_num=None, info=None, save=False, display=False,
                                                    thumbnail_only=False)
 
     tile_sum = tiles.\
       score_tiles(slide_number, filt_np_img, np_img, (large_w, large_h, final_patch_w, final_patch_h), small_tile_in_tile=small_tile_in_tile,
                                  offset=[row_idx_start, col_idx_start])
 
-    counter = 0
-    for tile in tile_sum.tiles_by_tissue_percentage():
-      print(tile.tissue_percentage)
-      if tile.tissue_percentage > TISSUE_THRESHOLD:
-        counter += 1
-        tile.save_scaled_tile()
-      else:
-        break
-    print("{} tiles saved".format(counter))
+    if save_above_threshold:
+      counter = 0
+      for tile in tile_sum.tiles_by_tissue_percentage():
+        print(tile.tissue_percentage)
+        if tile.tissue_percentage > TISSUE_THRESHOLD:
+          counter += 1
+          tile.save_scaled_tile()
+        else:
+          break
+      print("{} tiles saved".format(counter))
     '''
     img_path = get_training_image_path_split(slide_number, large_w, large_h, new_w, new_h, tile_row_idx, tile_col_idx)
     print("Saving image to: " + img_path)
@@ -1270,77 +1273,5 @@ def slide_info(display_all_properties=False):
   t.elapsed_display()
 
 if __name__ == "__main__":
-  #print(SCALE_FACTOR)
-  #t = slide_to_scaled_tiles(0)
-  results = []
-  #task =[0, (0, 5800, 0, 8700, 1, 1), 2, 80128, 61184, 300, 200, True]
-  #tasks =[[0, (0, 8700, 0, 5800, 1, 1), 2, 80128, 61184, 300, 200, True],
-  #        [0, (8700, 17400, 0, 5800, 2, 1), 2, 80128, 61184, 300, 200, True]]
 
-  '''
-  #tasks =[[0, (8700, 17400, 0, 5800, 2, 1), 2, 80128, 61184, 300, 200, True]]
-  tasks = [[0, (0, 25600.0, 0, 19200.0, 1, 1), 2, 80128, 61184, 883, 674, True],
-   [0, (25600.0, 51200.0, 0, 19200.0, 2, 1), 2, 80128, 61184, 883, 674, True],
-   [0, (51200.0, 80000.0, 0, 19200.0, 3, 1), 2, 80128, 61184, 883, 674, True],
-   [0, (0, 25600.0, 19200.0, 38400.0, 1, 2), 2, 80128, 61184, 883, 674, True],
-   [0,
-    (25600.0, 51200.0, 19200.0, 38400.0, 2, 2),
-    2,
-    80128,
-    61184,
-    883,
-    674,
-    True],
-   [0,
-    (51200.0, 80000.0, 19200.0, 38400.0, 3, 2),
-    2,
-    80128,
-    61184,
-    883,
-    674,
-    True],
-   [0, (0, 25600.0, 38400.0, 60800.0, 1, 3), 2, 80128, 61184, 883, 674, True],
-   [0,
-    (25600.0, 51200.0, 38400.0, 60800.0, 2, 3),
-    2,
-    80128,
-    61184,
-    883,
-    674,
-    True],
-   [0,
-    (51200.0, 80000.0, 38400.0, 60800.0, 3, 3),
-    2,
-    80128,
-    61184,
-    883,
-    674,
-    True]]
-
-  t = split_subslide_into_tile(results, tasks)
-  '''
-  '''
-  slide_number = 0
-  slide_filepath = get_training_slide_path(slide_number)
-  print("Opening Slide #%d: %s" % (slide_number, slide_filepath))
-  my_slide = open_slide(slide_filepath)
-
-  large_w, large_h = my_slide.dimensions
-  level = my_slide.get_best_level_for_downsample(SCALE_FACTOR)
-  # make sure new split is multiple of ROW_TILE_SIZE_SCALED
-  assert math.floor(my_slide.level_dimensions[level][0] / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED) > 0, AssertionError('reduce COL_NUM_SPLIT or SCALE_FACTOR')
-  assert math.floor(my_slide.level_dimensions[level][1] / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED) > 0, AssertionError('reduce ROW_NUM_SPLIT or SCALE_FACTOR')
-  #large_w_split = math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE) * ROW_TILE_SIZE
-  #large_h_split = math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE) * ROW_TILE_SIZE
-
-  # size per patch for a given number of splits along cols and rows
-  large_w_split = int(math.floor(large_w / COL_NUM_SPLIT / ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level]) * my_slide.level_downsamples[level])
-  large_h_split = int(math.floor(large_h / ROW_NUM_SPLIT / ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level]) * my_slide.level_downsamples[level])
-  # size of downsampled patches
-  new_w = math.floor(large_w_split / SCALE_FACTOR)
-  new_h = math.floor(large_h_split / SCALE_FACTOR)
-  indices = tiles.get_tile_indices(large_w, large_h,
-                                  large_w_split, large_h_split, multiples=ROW_TILE_SIZE_SCALED*my_slide.level_downsamples[level], cutoff=True)
-  '''
-
-  t = slide_to_scaled_tiles(0)
+  t = slide_to_scaled_tiles(slide_path=None, small_tile_in_tile=True)
