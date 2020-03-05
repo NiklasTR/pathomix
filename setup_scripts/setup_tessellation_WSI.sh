@@ -3,6 +3,7 @@
 mkdir -p ~/bucket/WSI_preparation
 
 export PATHOMIX_DATA=/home/ubuntu/bucket
+export FONT_PATH=/home/ubuntu/pathomix/pathomix/preprocessing/docs/arial.ttf
 
 mkdir -p ~/virtual_envs
 
