@@ -14,7 +14,6 @@
 #
 # ------------------------------------------------------------------------
 import os
-os.chdir("/home/pmf/Documents/DataMining/pathomix")
 import glob
 import math
 import matplotlib.pyplot as plt
