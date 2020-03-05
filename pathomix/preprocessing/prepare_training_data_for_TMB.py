@@ -18,7 +18,7 @@ if __name__ == '__main__':
     df['TMB_corrected'] = df['# Mutations'] / 38.  # exon is estimated to be 38MB big
     df['TMB_corrected_log'] = np.log(df['TMB_corrected'])
 
-    df_manifest = pd.read_csv('/home/ubuntu/pathomix/data/TCGA_manifest/manifest_TCGA_COAD.txt', sep='\t')
+    df_manifest = pd.read_csv('/home/ubuntu/pathomix/data/TCGA_manifests/manifest_TCGA_COAD.txt', sep='\t')
 
     # loop over patient for which we have TMB data
 
