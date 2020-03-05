@@ -6,6 +6,12 @@ export PATHOMIX_DATA=/home/ubuntu/bucket
 
 mkdir -p ~/virtual_envs
 
+export LC_ALL="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+sudo dpkg-reconfigure locales
+
+sudo apt-get install python3-venv
+
 python3 -m venv ~/virtual_envs/venv_pathomix
 
 source ~/virtual_envs/venv_pathomix/bin/activate
